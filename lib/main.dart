@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'app/app.dart';
 import 'core/gsi/municipality_directory.dart';
 import 'services/service_providers.dart';
 
@@ -23,17 +24,4 @@ Future<void> main() async {
       child: const BioLabelMapApp(),
     ),
   );
-}
-
-/// 画面は次の段階で作る。いまは起動確認用の仮の画面。
-class BioLabelMapApp extends StatelessWidget {
-  const BioLabelMapApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'BioLabelMap',
-      home: Scaffold(body: Center(child: Text('BioLabelMap'))),
-    );
-  }
 }

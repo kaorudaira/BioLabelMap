@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 地理院タイル・標高API・逆ジオコーダ -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 採集地点の GPS -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
-        android:label="biolabelmap"
+        android:label="BioLabelMap"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
