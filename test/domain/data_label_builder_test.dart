@@ -14,7 +14,7 @@ void main() {
     localityEn: 'Shimooritate',
     elevationMeters: 1390,
     latitude: 36.94471,
-    longitude: 139.24258,
+    longitude: 139.24262,
     period: CollectionPeriod.singleDay(CalendarDate(2026, 6, 20)),
     collector: 'K. YOSHIHARA',
     municipalityJa: '魚沼市',
@@ -108,23 +108,21 @@ void main() {
   });
 
   group('formatCoordinates', () {
-    test('小数4桁に丸める', () {
-      expect(formatCoordinates(36.94465, 139.24255), '36.9447°N 139.2426°E');
+    test('小数4桁で切り捨てる(四捨五入しない)', () {
+      expect(formatCoordinates(36.94479, 139.24259), '36.9447°N 139.2425°E');
     });
 
     test('同一地点の判定(LocalityKey)と同じ値になる', () {
-      // 139.24255 は2進数では 139.242549999… なので、toStringAsFixed だと 139.2425 になる
-      final key = LocalityKey.fromCoordinates(36.94465, 139.24255);
-      expect(key, const LocalityKey(369447, 1392426));
-      expect(formatCoordinates(36.94465, 139.24255), '36.9447°N 139.2426°E');
+      final key = LocalityKey.fromCoordinates(36.94479, 139.24259);
+      expect(key, const LocalityKey(369447, 1392425));
     });
 
     test('小数部のゼロを埋める', () {
       expect(formatCoordinates(35.0005, 139.05), '35.0005°N 139.0500°E');
     });
 
-    test('南緯・西経', () {
-      expect(formatCoordinates(-12.5, -45.25), '12.5000°S 45.2500°W');
+    test('南緯・西経は 0 の方向へ切り捨てる', () {
+      expect(formatCoordinates(-12.34569, -45.25), '12.3456°S 45.2500°W');
     });
   });
 
@@ -163,14 +161,28 @@ void main() {
   });
 
   group('LocalityKey', () {
-    test('小数4桁で一致すれば同じ地点', () {
-      expect(LocalityKey.fromCoordinates(36.94471, 139.24258),
-          LocalityKey.fromCoordinates(36.94469, 139.24262));
+    test('切り捨てて小数4桁が同じなら同じ地点', () {
+      expect(LocalityKey.fromCoordinates(36.94470, 139.24260),
+          LocalityKey.fromCoordinates(36.94479, 139.24269));
     });
 
-    test('小数4桁で異なれば別の地点', () {
-      expect(LocalityKey.fromCoordinates(36.9447, 139.2426),
-          isNot(LocalityKey.fromCoordinates(36.9448, 139.2426)));
+    test('切り捨てて小数4桁が異なれば別の地点(四捨五入なら同じになる値)', () {
+      expect(LocalityKey.fromCoordinates(36.94469, 139.2426),
+          isNot(LocalityKey.fromCoordinates(36.94471, 139.2426)));
+    });
+
+    test('2進数の誤差で桁を落とさない', () {
+      // 0.0003 * 10000 は 2.9999… になり、単純な truncate では 2 になる
+      expect(LocalityKey.truncateE4(0.0003), 3);
+      expect(LocalityKey.truncateE4(36.9447), 369447);
+      expect(LocalityKey.truncateE4(35.0005), 350005);
+    });
+
+    test('整数・小数1桁・負の値・ごく小さい値', () {
+      expect(LocalityKey.truncateE4(139.0), 1390000);
+      expect(LocalityKey.truncateE4(43.1), 431000);
+      expect(LocalityKey.truncateE4(-12.34569), -123456);
+      expect(LocalityKey.truncateE4(1e-7), 0);
     });
   });
 }

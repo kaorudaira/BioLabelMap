@@ -134,10 +134,9 @@ List<DataLabelLine> buildDataLabel(DataLabelSource s) {
 String dataLabelAsSingleLine(List<DataLabelLine> lines) =>
     lines.map((l) => l.text).join(', ');
 
-/// 緯度経度をラベル用にする。小数4桁。`36.9447°N 139.2426°E`
+/// 緯度経度をラベル用にする。小数4桁で切り捨て。`36.9447°N 139.2426°E`
 ///
-/// 丸めは LocalityKey と同じ整数化で行う。`toStringAsFixed` は2進数の誤差で
-/// 139.24255 を 139.2425 にしてしまい、同一地点の判定とラベルが食い違うため。
+/// LocalityKey と同じ整数化を使い、同一地点の判定とラベルの値を必ず一致させる。
 String formatCoordinates(double latitude, double longitude) {
   final key = LocalityKey.fromCoordinates(latitude, longitude);
   final ns = key.latE4 < 0 ? 'S' : 'N';
