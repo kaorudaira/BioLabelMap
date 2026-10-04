@@ -39,6 +39,7 @@ dependencies:
   drift_flutter: ^0.3.1
   path_provider: ^2.1.6
   http: ^1.6.0
+  pdf: ^3.13.1
 
 dev_dependencies:
   flutter_test:
@@ -70,6 +71,10 @@ flutter:
   assets:
     # 自治体コード → 県・市区町村の名前(和・英)。tools/municipalities/ で生成する
     - assets/data/municipalities.json
+    # ラベルの欧文フォント(SIL Open Font License。FiraSansCondensed-OFL.txt を同梱)
+    - assets/fonts/FiraSansCondensed-Regular.ttf
+    - assets/fonts/FiraSansCondensed-Italic.ttf
+    - assets/fonts/FiraSansCondensed-OFL.txt
 
   # To add assets to your application, add an assets section, like this:
   # assets:

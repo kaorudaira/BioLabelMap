@@ -3,48 +3,12 @@ import 'data_label_builder.dart';
 /// 1mm を pt に換算する係数(1pt = 1/72 インチ)。
 const ptPerMm = 72 / 25.4;
 
-/// 文字列の幅を測る。PDF に埋め込むフォントの寸法で測るのが本来の形。
+/// 文字列の幅を測る。アプリでは、PDF に埋め込むフォントの寸法で測る(FontTextMeasurer)。
 ///
 /// `abstract interface class` は Java の interface に相当する。
-/// フォントを同梱したら、pdf パッケージのフォント寸法を使う実装に差し替える。
 abstract interface class TextMeasurer {
   /// [text] を [fontSizePt] で書いたときの幅(pt)。
   double widthOf(String text, double fontSizePt);
-}
-
-/// 文字の種類ごとの幅で見積もる(フォントを同梱するまでの仮の実装)。
-///
-/// 値は Condensed 系の欧文書体を想定した目安で、やや広めにとってある。
-/// 和文(かな・漢字・全角)は 1文字 1em。実際のフォントの寸法とは異なるので、
-/// フォントを同梱したら、フォントの寸法で測る実装に差し替える。
-class ApproximateTextMeasurer implements TextMeasurer {
-  const ApproximateTextMeasurer();
-
-  static const _upperEm = 0.55;
-  static const _lowerEm = 0.45;
-  static const _digitEm = 0.5;
-  static const _narrowEm = 0.22; // . , : ; ' ( )
-  static const _spaceEm = 0.2;
-  static const _otherEm = 0.5; // - ° など
-  static const _wideEm = 1.0;
-
-  @override
-  double widthOf(String text, double fontSizePt) {
-    var em = 0.0;
-    for (final char in text.runes.map(String.fromCharCode)) {
-      em += switch (char) {
-        _ when char.runes.first >= 0x3000 => _wideEm,
-        ' ' => _spaceEm,
-        '.' || ',' || ':' || ';' || "'" || '(' || ')' => _narrowEm,
-        _ when RegExp(r'[0-9]').hasMatch(char) => _digitEm,
-        _ when char != char.toLowerCase() => _upperEm,
-        _ when char != char.toUpperCase() => _lowerEm,
-        _ => _otherEm,
-      };
-      // ↑ `_ when 条件` はガード付きのパターン。Java 21 の `case X x when 条件 ->` に相当する。
-    }
-    return em * fontSizePt;
-  }
 }
 
 /// ラベルの寸法と、改行・縮小の決まり。
@@ -100,6 +64,7 @@ class PlacedLabelLine {
 class DataLabelLayout {
   const DataLabelLayout({
     required this.lines,
+    required this.headerReduced,
     required this.detailAddressReduced,
     required this.droppedJapaneseSegments,
     required this.japaneseOmitted,
@@ -107,6 +72,9 @@ class DataLabelLayout {
   });
 
   final List<PlacedLabelLine> lines;
+
+  /// 1行目(`JAPAN: 県`)が入らないため、1行目の文字を1段階小さくしたか。
+  final bool headerReduced;
 
   /// 7行に収めるため、詳細住所の文字を1段階小さくしたか。
   final bool detailAddressReduced;
@@ -126,6 +94,8 @@ class DataLabelLayout {
 ///
 /// 1. 欧文の行は、余裕をもった幅([DataLabelLayoutSpec.wrapWidthPt])で改行する。
 ///    区切りは「, 」を優先し、次に空白、最後にハイフンの後ろ。行末のカンマは残す。
+///    ただし1行目(`JAPAN: 県`)は、入らなければまず文字を1段階小さくする(長い県名だけ)。
+///    それでも入らないときに改行する。
 /// 2. 日本語の地名は改行しない。1行に入らなければ、大きい行政区画(郡 → 市町村)から省いて収める。
 /// 3. それで [DataLabelLayoutSpec.maxLines] 行を超える、または日本語の地名が入らないときは、
 ///    詳細住所(郡と市町村・大字・日本語の地名)の文字を1段階小さくして、1〜2をやり直す。
@@ -136,7 +106,7 @@ DataLabelLayout layoutDataLabel(
   List<DataLabelLine> lines, {
   DataLabelStyle style = const DataLabelStyle(),
   DataLabelLayoutSpec spec = const DataLabelLayoutSpec(),
-  TextMeasurer measurer = const ApproximateTextMeasurer(),
+  required TextMeasurer measurer,
   bool allowOmitJapanese = true,
 }) {
   final normal = _Attempt(lines, style, spec, measurer);
@@ -167,8 +137,15 @@ class _Attempt {
     this.measurer,
   ) {
     for (final line in lines) {
-      final size = style.sizeOf(line.role);
+      var size = style.sizeOf(line.role);
       bool fits(String s) => measurer.widthOf(s, size) <= spec.wrapWidthPt;
+      // ↑ ローカル関数は外側の変数 size を参照する(Java のラムダと違い、再代入した値も見える)
+
+      // 1行目は、入らなければ1段階小さくする(長い県名だけ)
+      if (line.role == DataLabelLineRole.header && !fits(line.text)) {
+        size -= style.reductionStepPt;
+        headerReduced = true;
+      }
 
       if (line.role == DataLabelLineRole.japanese) {
         final segments = line.segments;
@@ -194,6 +171,7 @@ class _Attempt {
   final placed = <PlacedLabelLine>[];
   final dropped = <String>[];
   var japaneseDoesNotFit = false;
+  var headerReduced = false;
 
   bool get tooManyLines => placed.length > spec.maxLines;
 
@@ -206,6 +184,7 @@ class _Attempt {
   DataLabelLayout toLayout({required bool reduced, bool japaneseOmitted = false}) =>
       DataLabelLayout(
         lines: placed,
+        headerReduced: headerReduced,
         detailAddressReduced: reduced,
         droppedJapaneseSegments: dropped,
         japaneseOmitted: japaneseOmitted,
