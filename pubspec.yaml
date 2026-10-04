@@ -81,6 +81,9 @@ flutter:
     - assets/fonts/FiraSansCondensed-Regular.ttf
     - assets/fonts/FiraSansCondensed-Italic.ttf
     - assets/fonts/FiraSansCondensed-OFL.txt
+    # ラベルの和文フォント(SIL Open Font License。BIZUDPGothic-OFL.txt を同梱)
+    - assets/fonts/BIZUDPGothic-Regular.ttf
+    - assets/fonts/BIZUDPGothic-OFL.txt
 
   # To add assets to your application, add an assets section, like this:
   # assets:

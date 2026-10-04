@@ -4,36 +4,40 @@ import 'package:pdf/pdf.dart';
 
 import '../../domain/label/data_label_layout.dart';
 
-/// 同梱した欧文フォント(Fira Sans Condensed)の寸法で、文字列の幅を測る。
+/// 同梱したフォントの寸法で、文字列の幅を測る。
 ///
-/// PDF に埋め込むフォントと同じファイルを読むので、印刷結果と同じ幅になる(カーニングは含めない)。
-/// 和文(かな・漢字・全角)は、和文フォントを選ぶまで 1文字 1em として扱う。
+/// PDF では欧文フォント(Fira Sans Condensed)を基本にし、字形が無い文字(かな・漢字)は
+/// 和文フォント(BIZ UDPゴシック)で描く。ここでも同じ規則で文字ごとにフォントを選ぶので、
+/// 印刷結果と同じ幅になる(カーニングは含めない)。
 class FontTextMeasurer implements TextMeasurer {
-  FontTextMeasurer(ByteData latinFont) : _ttf = TtfParser(latinFont);
+  FontTextMeasurer({required ByteData latinFont, required ByteData japaneseFont})
+    : _latin = TtfParser(latinFont),
+      _japanese = TtfParser(japaneseFont);
 
-  final TtfParser _ttf;
-
-  static const _wideEm = 1.0;
+  final TtfParser _latin;
+  final TtfParser _japanese;
 
   @override
   double widthOf(String text, double fontSizePt) {
     var em = 0.0;
     for (final rune in text.runes) {
-      em += rune >= 0x3000 ? _wideEm : _advanceOf(rune);
+      em += _advanceOf(rune);
     }
     return em * fontSizePt;
   }
 
-  /// フォントに字形があるか(マクロン付きの文字などの確認用)。
-  bool hasGlyph(int rune) => _ttf.charToGlyphIndexMap.containsKey(rune);
+  /// どちらかのフォントに字形があるか(マクロン付きの文字などの確認用)。
+  bool hasGlyph(int rune) =>
+      _latin.charToGlyphIndexMap.containsKey(rune) ||
+      _japanese.charToGlyphIndexMap.containsKey(rune);
 
   double _advanceOf(int rune) {
-    final glyph = _ttf.charToGlyphIndexMap[rune];
-    if (glyph == null) {
-      throw ArgumentError('フォントに字形がありません: ${String.fromCharCode(rune)} '
-          '(U+${rune.toRadixString(16).toUpperCase().padLeft(4, '0')})');
+    for (final font in [_latin, _japanese]) {
+      final glyph = font.charToGlyphIndexMap[rune];
+      // advanceWidth は 1em を 1 とした値
+      if (glyph != null) return font.glyphInfoMap[glyph]?.advanceWidth ?? 0;
     }
-    // advanceWidth は 1em を 1 とした値
-    return _ttf.glyphInfoMap[glyph]?.advanceWidth ?? 0;
+    throw ArgumentError('フォントに字形がありません: ${String.fromCharCode(rune)} '
+        '(U+${rune.toRadixString(16).toUpperCase().padLeft(4, '0')})');
   }
 }
