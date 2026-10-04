@@ -1,17 +1,13 @@
-# biolabelmap
+# BioLabelMap
 
-A new Flutter project.
+昆虫標本ラベル記録アプリ。圏外の山間部でもGPSで採集地点を記録し、標本ラベルの印刷とデータ管理までをスマートフォン1台で完結させる(iPhone / Android、Flutter)。
 
-## Getting Started
+要件は [docs/requirements.md](docs/requirements.md) を参照。
 
-This project is a starting point for a Flutter application.
+## 開発
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter pub get
+dart run build_runner build   # Drift の database.g.dart を生成(テーブルを変えたら再実行)
+flutter test
+```
