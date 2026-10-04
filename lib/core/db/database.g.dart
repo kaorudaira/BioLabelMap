@@ -4251,6 +4251,17 @@ class $AppSettingsTable extends AppSettings
       ).withConverter<ElevationRounding>(
         $AppSettingsTable.$converterelevationRounding,
       );
+  static const VerificationMeta _lastBackupAtMeta = const VerificationMeta(
+    'lastBackupAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastBackupAt = GeneratedColumn<DateTime>(
+    'last_backup_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4260,6 +4271,7 @@ class $AppSettingsTable extends AppSettings
     catalogDigits,
     nextCatalogNumber,
     elevationRounding,
+    lastBackupAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4321,6 +4333,15 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('last_backup_at')) {
+      context.handle(
+        _lastBackupAtMeta,
+        lastBackupAt.isAcceptableOrUnknown(
+          data['last_backup_at']!,
+          _lastBackupAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -4360,6 +4381,10 @@ class $AppSettingsTable extends AppSettings
           data['${effectivePrefix}elevation_rounding'],
         )!,
       ),
+      lastBackupAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_backup_at'],
+      ),
     );
   }
 
@@ -4388,6 +4413,9 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
   /// 次に発行する標本番号。null の間は初回設定が済んでおらず、記録できない。
   final int? nextCatalogNumber;
   final ElevationRounding elevationRounding;
+
+  /// 最後にバックアップを書き出した日時(スキーマ 2 で追加)。
+  final DateTime? lastBackupAt;
   const AppSettingsRow({
     required this.id,
     this.collectorName,
@@ -4396,6 +4424,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     required this.catalogDigits,
     this.nextCatalogNumber,
     required this.elevationRounding,
+    this.lastBackupAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4417,6 +4446,9 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
         $AppSettingsTable.$converterelevationRounding.toSql(elevationRounding),
       );
     }
+    if (!nullToAbsent || lastBackupAt != null) {
+      map['last_backup_at'] = Variable<DateTime>(lastBackupAt);
+    }
     return map;
   }
 
@@ -4435,6 +4467,9 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
           ? const Value.absent()
           : Value(nextCatalogNumber),
       elevationRounding: Value(elevationRounding),
+      lastBackupAt: lastBackupAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastBackupAt),
     );
   }
 
@@ -4453,6 +4488,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       elevationRounding: $AppSettingsTable.$converterelevationRounding.fromJson(
         serializer.fromJson<String>(json['elevationRounding']),
       ),
+      lastBackupAt: serializer.fromJson<DateTime?>(json['lastBackupAt']),
     );
   }
   @override
@@ -4468,6 +4504,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       'elevationRounding': serializer.toJson<String>(
         $AppSettingsTable.$converterelevationRounding.toJson(elevationRounding),
       ),
+      'lastBackupAt': serializer.toJson<DateTime?>(lastBackupAt),
     };
   }
 
@@ -4479,6 +4516,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     int? catalogDigits,
     Value<int?> nextCatalogNumber = const Value.absent(),
     ElevationRounding? elevationRounding,
+    Value<DateTime?> lastBackupAt = const Value.absent(),
   }) => AppSettingsRow(
     id: id ?? this.id,
     collectorName: collectorName.present
@@ -4493,6 +4531,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
         ? nextCatalogNumber.value
         : this.nextCatalogNumber,
     elevationRounding: elevationRounding ?? this.elevationRounding,
+    lastBackupAt: lastBackupAt.present ? lastBackupAt.value : this.lastBackupAt,
   );
   AppSettingsRow copyWithCompanion(AppSettingsCompanion data) {
     return AppSettingsRow(
@@ -4515,6 +4554,9 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       elevationRounding: data.elevationRounding.present
           ? data.elevationRounding.value
           : this.elevationRounding,
+      lastBackupAt: data.lastBackupAt.present
+          ? data.lastBackupAt.value
+          : this.lastBackupAt,
     );
   }
 
@@ -4527,7 +4569,8 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
           ..write('catalogPrefix: $catalogPrefix, ')
           ..write('catalogDigits: $catalogDigits, ')
           ..write('nextCatalogNumber: $nextCatalogNumber, ')
-          ..write('elevationRounding: $elevationRounding')
+          ..write('elevationRounding: $elevationRounding, ')
+          ..write('lastBackupAt: $lastBackupAt')
           ..write(')'))
         .toString();
   }
@@ -4541,6 +4584,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     catalogDigits,
     nextCatalogNumber,
     elevationRounding,
+    lastBackupAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -4552,7 +4596,8 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
           other.catalogPrefix == this.catalogPrefix &&
           other.catalogDigits == this.catalogDigits &&
           other.nextCatalogNumber == this.nextCatalogNumber &&
-          other.elevationRounding == this.elevationRounding);
+          other.elevationRounding == this.elevationRounding &&
+          other.lastBackupAt == this.lastBackupAt);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
@@ -4563,6 +4608,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
   final Value<int> catalogDigits;
   final Value<int?> nextCatalogNumber;
   final Value<ElevationRounding> elevationRounding;
+  final Value<DateTime?> lastBackupAt;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.collectorName = const Value.absent(),
@@ -4571,6 +4617,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     this.catalogDigits = const Value.absent(),
     this.nextCatalogNumber = const Value.absent(),
     this.elevationRounding = const Value.absent(),
+    this.lastBackupAt = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -4580,6 +4627,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     this.catalogDigits = const Value.absent(),
     this.nextCatalogNumber = const Value.absent(),
     this.elevationRounding = const Value.absent(),
+    this.lastBackupAt = const Value.absent(),
   });
   static Insertable<AppSettingsRow> custom({
     Expression<int>? id,
@@ -4589,6 +4637,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     Expression<int>? catalogDigits,
     Expression<int>? nextCatalogNumber,
     Expression<String>? elevationRounding,
+    Expression<DateTime>? lastBackupAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4598,6 +4647,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
       if (catalogDigits != null) 'catalog_digits': catalogDigits,
       if (nextCatalogNumber != null) 'next_catalog_number': nextCatalogNumber,
       if (elevationRounding != null) 'elevation_rounding': elevationRounding,
+      if (lastBackupAt != null) 'last_backup_at': lastBackupAt,
     });
   }
 
@@ -4609,6 +4659,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     Value<int>? catalogDigits,
     Value<int?>? nextCatalogNumber,
     Value<ElevationRounding>? elevationRounding,
+    Value<DateTime?>? lastBackupAt,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -4618,6 +4669,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
       catalogDigits: catalogDigits ?? this.catalogDigits,
       nextCatalogNumber: nextCatalogNumber ?? this.nextCatalogNumber,
       elevationRounding: elevationRounding ?? this.elevationRounding,
+      lastBackupAt: lastBackupAt ?? this.lastBackupAt,
     );
   }
 
@@ -4649,6 +4701,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
         ),
       );
     }
+    if (lastBackupAt.present) {
+      map['last_backup_at'] = Variable<DateTime>(lastBackupAt.value);
+    }
     return map;
   }
 
@@ -4661,7 +4716,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
           ..write('catalogPrefix: $catalogPrefix, ')
           ..write('catalogDigits: $catalogDigits, ')
           ..write('nextCatalogNumber: $nextCatalogNumber, ')
-          ..write('elevationRounding: $elevationRounding')
+          ..write('elevationRounding: $elevationRounding, ')
+          ..write('lastBackupAt: $lastBackupAt')
           ..write(')'))
         .toString();
   }
@@ -7941,6 +7997,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<int> catalogDigits,
       Value<int?> nextCatalogNumber,
       Value<ElevationRounding> elevationRounding,
+      Value<DateTime?> lastBackupAt,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -7951,6 +8008,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<int> catalogDigits,
       Value<int?> nextCatalogNumber,
       Value<ElevationRounding> elevationRounding,
+      Value<DateTime?> lastBackupAt,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -7997,6 +8055,11 @@ class $$AppSettingsTableFilterComposer
     column: $table.elevationRounding,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
+
+  ColumnFilters<DateTime> get lastBackupAt => $composableBuilder(
+    column: $table.lastBackupAt,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$AppSettingsTableOrderingComposer
@@ -8040,6 +8103,11 @@ class $$AppSettingsTableOrderingComposer
 
   ColumnOrderings<String> get elevationRounding => $composableBuilder(
     column: $table.elevationRounding,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastBackupAt => $composableBuilder(
+    column: $table.lastBackupAt,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -8086,6 +8154,11 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.elevationRounding,
     builder: (column) => column,
   );
+
+  GeneratedColumn<DateTime> get lastBackupAt => $composableBuilder(
+    column: $table.lastBackupAt,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableManager
@@ -8127,6 +8200,7 @@ class $$AppSettingsTableTableManager
                 Value<int?> nextCatalogNumber = const Value.absent(),
                 Value<ElevationRounding> elevationRounding =
                     const Value.absent(),
+                Value<DateTime?> lastBackupAt = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 collectorName: collectorName,
@@ -8135,6 +8209,7 @@ class $$AppSettingsTableTableManager
                 catalogDigits: catalogDigits,
                 nextCatalogNumber: nextCatalogNumber,
                 elevationRounding: elevationRounding,
+                lastBackupAt: lastBackupAt,
               ),
           createCompanionCallback:
               ({
@@ -8146,6 +8221,7 @@ class $$AppSettingsTableTableManager
                 Value<int?> nextCatalogNumber = const Value.absent(),
                 Value<ElevationRounding> elevationRounding =
                     const Value.absent(),
+                Value<DateTime?> lastBackupAt = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 collectorName: collectorName,
@@ -8154,6 +8230,7 @@ class $$AppSettingsTableTableManager
                 catalogDigits: catalogDigits,
                 nextCatalogNumber: nextCatalogNumber,
                 elevationRounding: elevationRounding,
+                lastBackupAt: lastBackupAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(

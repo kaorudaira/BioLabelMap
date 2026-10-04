@@ -144,4 +144,37 @@ void main() {
     final settings = await db.select(db.appSettings).getSingle();
     expect(settings.nextCatalogNumber, isNull);
   });
+
+  test('スキーマ1のDBを開くと、設定を保ったまま最後のバックアップ日時の列が増える', () async {
+    // 今のスキーマから last_backup_at を除いて、スキーマ1のDBを作る
+    final statements = [
+      for (final row in await db
+          .customSelect("SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%'")
+          .get())
+        row.read<String>('sql'),
+    ];
+    final old = AppDatabase(
+      NativeDatabase.memory(
+        setup: (raw) {
+          for (final sql in statements) {
+            raw.execute(sql);
+          }
+          raw.execute('ALTER TABLE app_settings DROP COLUMN last_backup_at');
+          raw.execute(
+            "INSERT INTO app_settings (id, collector_name, next_catalog_number) VALUES (1, 'Kaoru Yoshihara', 123)",
+          );
+          raw.userVersion = 1;
+        },
+      ),
+    );
+    addTearDown(old.close);
+
+    final settings = await old.select(old.appSettings).getSingle();
+    expect(settings.collectorName, 'Kaoru Yoshihara');
+    expect(settings.nextCatalogNumber, 123);
+    expect(settings.lastBackupAt, isNull);
+
+    await old.update(old.appSettings).write(AppSettingsCompanion(lastBackupAt: Value(DateTime(2026, 10, 4))));
+    expect((await old.select(old.appSettings).getSingle()).lastBackupAt, DateTime(2026, 10, 4));
+  });
 }

@@ -62,6 +62,43 @@ void main() {
     });
   });
 
+  group('標本番号の書式の変更', () {
+    setUp(() async {
+      await settings.initializeCatalog(122);
+    });
+
+    test('接頭辞の前後の空白は除く', () async {
+      await settings.setCatalogFormat(prefix: ' ABC ', digits: 4);
+      expect(await records.previewCatalogRange(1), 'ABC0123');
+    });
+
+    test('空の接頭辞と範囲外の桁数は受け付けない', () async {
+      expect(() => settings.setCatalogFormat(prefix: '  ', digits: 5), throwsArgumentError);
+      expect(() => settings.setCatalogFormat(prefix: 'KYC', digits: 0), throwsArgumentError);
+      expect(() => settings.setCatalogFormat(prefix: 'KYC', digits: 11), throwsArgumentError);
+    });
+
+    test('これから発行する番号が既存の番号と同じ文字列になる書式を見つける', () async {
+      await records.save(input()); // KYC00123。次は124
+      // 以前 `A1`+3桁の書式で登録した 5番
+      await db.into(db.specimens).insert(
+        SpecimensCompanion.insert(collectionEventId: 1, catalogNumber: 5, catalogText: 'A1005'),
+      );
+
+      // `A`+4桁では、これから発行する 1005番が `A1005` になる
+      expect(await settings.findFormatConflict(prefix: 'A', digits: 4), 'A1005');
+      // 同じ文字列になる番号が、すでに発行済みの範囲(124未満)なら重ならない
+      expect(await settings.findFormatConflict(prefix: 'A1', digits: 3), isNull);
+      expect(await settings.findFormatConflict(prefix: 'KYC0', digits: 4), isNull);
+      expect(await settings.findFormatConflict(prefix: 'KYC', digits: 5), isNull);
+    });
+
+    test('バックアップの日時を記録する', () async {
+      await settings.markBackedUp(DateTime(2026, 10, 4, 9));
+      expect((await settings.read()).lastBackupAt, DateTime(2026, 10, 4, 9));
+    });
+  });
+
   group('保存', () {
     setUp(() async {
       await settings.initializeCatalog(122);

@@ -186,6 +186,9 @@ class AppSettings extends Table {
     Constant(ElevationRounding.tenMeters.name),
   )();
 
+  /// 最後にバックアップを書き出した日時(スキーマ 2 で追加)。
+  DateTimeColumn get lastBackupAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
