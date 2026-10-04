@@ -1,0 +1,13 @@
+# リポジトリ内の改行は LF にそろえる(クラウドの Mac ビルドでシェルスクリプトが壊れないように)
+* text=auto eol=lf
+
+# Windows 用のスクリプトだけは CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# バイナリ
+*.png binary
+*.jpg binary
+*.ttf binary
+*.otf binary
+*.jar binary
