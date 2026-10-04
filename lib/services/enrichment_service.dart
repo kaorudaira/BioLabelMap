@@ -186,9 +186,11 @@ class EnrichmentService {
     return LocalitiesCompanion(
       municipalityCode: Value(address.municipalityCode),
       prefectureJa: Value(names?.prefectureJa),
+      countyJa: Value(names?.countyJa),
       municipalityJa: Value(names?.municipalityJa),
       localityJa: Value(address.localityJa),
       prefectureEn: Value(names?.prefectureEn),
+      countyEn: Value(names?.countyEn),
       municipalityEn: Value(names?.municipalityEn),
       localityEn: Value(localityEn),
       placeStatus: const Value(FetchStatus.fetched),

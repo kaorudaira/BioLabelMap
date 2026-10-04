@@ -1425,43 +1425,49 @@
   "prefJa": "北海道",
   "muniJa": "色丹村",
   "prefEn": "Hokkaidō",
-  "muniEn": "色丹村",
-  "unverified": true
+  "muniEn": "Shikotam-mura",
+  "gunJa": "色丹郡",
+  "gunEn": "Shikotan-gun"
  },
  "01696": {
   "prefJa": "北海道",
   "muniJa": "泊村",
   "prefEn": "Hokkaidō",
   "muniEn": "Tomari-mura",
-  "unverified": true
+  "gunJa": "国後郡",
+  "gunEn": "Kunashiri-gun"
  },
  "01697": {
   "prefJa": "北海道",
   "muniJa": "留夜別村",
   "prefEn": "Hokkaidō",
   "muniEn": "Ruyabetsu-mura",
-  "unverified": true
+  "gunJa": "国後郡",
+  "gunEn": "Kunashiri-gun"
  },
  "01698": {
   "prefJa": "北海道",
   "muniJa": "留別村",
   "prefEn": "Hokkaidō",
   "muniEn": "Rubetsu-mura",
-  "unverified": true
+  "gunJa": "択捉郡",
+  "gunEn": "Etorofu-gun"
  },
  "01699": {
   "prefJa": "北海道",
   "muniJa": "紗那村",
   "prefEn": "Hokkaidō",
   "muniEn": "Shana-mura",
-  "unverified": true
+  "gunJa": "紗那郡",
+  "gunEn": "Shana-gun"
  },
  "01700": {
   "prefJa": "北海道",
   "muniJa": "蘂取村",
   "prefEn": "Hokkaidō",
   "muniEn": "Shibetoro-mura",
-  "unverified": true
+  "gunJa": "蘂取郡",
+  "gunEn": "Shibetoro-gun"
  },
  "02201": {
   "prefJa": "青森県",
@@ -2999,7 +3005,6 @@
   "prefJa": "福島県",
   "muniJa": "矢祭町",
   "prefEn": "Fukushima-ken",
-  "unverified": true,
   "muniEn": "Yamatsuri-machi",
   "gunEn": "Higashishirakawa-gun",
   "gunJa": "東白川郡"
@@ -6202,8 +6207,7 @@
   "prefJa": "山梨県",
   "muniJa": "市川三郷町",
   "prefEn": "Yamanashi-ken",
-  "unverified": true,
-  "muniEn": "Ichikawamisato",
+  "muniEn": "Ichikawamisato-chō",
   "gunEn": "Nishiyatsushiro-gun",
   "gunJa": "西八代郡"
  },
@@ -6291,7 +6295,6 @@
   "prefJa": "山梨県",
   "muniJa": "富士河口湖町",
   "prefEn": "Yamanashi-ken",
-  "unverified": true,
   "muniEn": "Fujikawaguchiko-machi",
   "gunEn": "Minamitsuru-gun",
   "gunJa": "南都留郡"
@@ -8940,7 +8943,6 @@
   "prefJa": "大阪府",
   "muniJa": "千早赤阪村",
   "prefEn": "Ōsaka-fu",
-  "unverified": true,
   "muniEn": "Chihayaakasaka-mura",
   "gunEn": "Minamikawachi-gun",
   "gunJa": "南河内郡"
@@ -12501,8 +12503,7 @@
   "prefJa": "大分県",
   "muniJa": "豊後大野市",
   "prefEn": "Ōita-ken",
-  "unverified": true,
-  "muniEn": "Bungoono-shi"
+  "muniEn": "Bungoōno-shi"
  },
  "44213": {
   "prefJa": "大分県",

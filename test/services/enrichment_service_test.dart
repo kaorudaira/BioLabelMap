@@ -100,6 +100,30 @@ void main() {
     expect(await queue(), isEmpty);
   });
 
+  test('町村は郡も補完する', () async {
+    final withCounty = EnrichmentService(
+      db,
+      GsiApi(MockClient((request) async => request.url.host.startsWith('cyberjapandata2')
+          ? json({'elevation': 700})
+          : json({'results': {'muniCd': '15461', 'lv01Nm': '土樽'}}))),
+      JsonMunicipalityDirectory.parse(jsonEncode({
+        '15461': {
+          'prefJa': '新潟県', 'muniJa': '湯沢町', 'gunJa': '南魚沼郡',
+          'prefEn': 'Niigata-ken', 'muniEn': 'Yuzawa-machi', 'gunEn': 'Minamiuonuma-gun',
+        },
+      })),
+      clock: () => now,
+    );
+    final id = await recordAt(36.8834, 138.8205);
+
+    await withCounty.run(triggered: true);
+
+    final l = await locality(id);
+    expect(l.countyJa, '南魚沼郡');
+    expect(l.countyEn, 'Minamiuonuma-gun');
+    expect(l.municipalityEn, 'Yuzawa-machi');
+  });
+
   test('大字のローマ字が辞書にあれば補う', () async {
     await db.into(db.placeRomajiDict).insert(PlaceRomajiDictCompanion.insert(
       municipalityCode: '15225',

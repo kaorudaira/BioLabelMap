@@ -142,6 +142,17 @@ class $LocalitiesTable extends Localities
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _countyJaMeta = const VerificationMeta(
+    'countyJa',
+  );
+  @override
+  late final GeneratedColumn<String> countyJa = GeneratedColumn<String>(
+    'county_ja',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _municipalityJaMeta = const VerificationMeta(
     'municipalityJa',
   );
@@ -170,6 +181,17 @@ class $LocalitiesTable extends Localities
   @override
   late final GeneratedColumn<String> prefectureEn = GeneratedColumn<String>(
     'prefecture_en',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _countyEnMeta = const VerificationMeta(
+    'countyEn',
+  );
+  @override
+  late final GeneratedColumn<String> countyEn = GeneratedColumn<String>(
+    'county_en',
     aliasedName,
     true,
     type: DriftSqlType.string,
@@ -232,9 +254,11 @@ class $LocalitiesTable extends Localities
     country,
     municipalityCode,
     prefectureJa,
+    countyJa,
     municipalityJa,
     localityJa,
     prefectureEn,
+    countyEn,
     municipalityEn,
     localityEn,
     placeStatus,
@@ -338,6 +362,12 @@ class $LocalitiesTable extends Localities
         ),
       );
     }
+    if (data.containsKey('county_ja')) {
+      context.handle(
+        _countyJaMeta,
+        countyJa.isAcceptableOrUnknown(data['county_ja']!, _countyJaMeta),
+      );
+    }
     if (data.containsKey('municipality_ja')) {
       context.handle(
         _municipalityJaMeta,
@@ -360,6 +390,12 @@ class $LocalitiesTable extends Localities
           data['prefecture_en']!,
           _prefectureEnMeta,
         ),
+      );
+    }
+    if (data.containsKey('county_en')) {
+      context.handle(
+        _countyEnMeta,
+        countyEn.isAcceptableOrUnknown(data['county_en']!, _countyEnMeta),
       );
     }
     if (data.containsKey('municipality_en')) {
@@ -442,6 +478,10 @@ class $LocalitiesTable extends Localities
         DriftSqlType.string,
         data['${effectivePrefix}prefecture_ja'],
       ),
+      countyJa: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}county_ja'],
+      ),
       municipalityJa: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}municipality_ja'],
@@ -453,6 +493,10 @@ class $LocalitiesTable extends Localities
       prefectureEn: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}prefecture_en'],
+      ),
+      countyEn: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}county_en'],
       ),
       municipalityEn: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -509,11 +553,15 @@ class Locality extends DataClass implements Insertable<Locality> {
   /// 自治体コード(逆ジオコーダの muniCd)。県・市町村の英語名の変換に使う。
   final String? municipalityCode;
   final String? prefectureJa;
+
+  /// 郡(町村のみ)。
+  final String? countyJa;
   final String? municipalityJa;
 
   /// 大字(逆ジオコーダの lv01Nm)。
   final String? localityJa;
   final String? prefectureEn;
+  final String? countyEn;
   final String? municipalityEn;
 
   /// 大字のローマ字。手入力し、辞書で補完する。
@@ -533,9 +581,11 @@ class Locality extends DataClass implements Insertable<Locality> {
     required this.country,
     this.municipalityCode,
     this.prefectureJa,
+    this.countyJa,
     this.municipalityJa,
     this.localityJa,
     this.prefectureEn,
+    this.countyEn,
     this.municipalityEn,
     this.localityEn,
     required this.placeStatus,
@@ -568,6 +618,9 @@ class Locality extends DataClass implements Insertable<Locality> {
     if (!nullToAbsent || prefectureJa != null) {
       map['prefecture_ja'] = Variable<String>(prefectureJa);
     }
+    if (!nullToAbsent || countyJa != null) {
+      map['county_ja'] = Variable<String>(countyJa);
+    }
     if (!nullToAbsent || municipalityJa != null) {
       map['municipality_ja'] = Variable<String>(municipalityJa);
     }
@@ -576,6 +629,9 @@ class Locality extends DataClass implements Insertable<Locality> {
     }
     if (!nullToAbsent || prefectureEn != null) {
       map['prefecture_en'] = Variable<String>(prefectureEn);
+    }
+    if (!nullToAbsent || countyEn != null) {
+      map['county_en'] = Variable<String>(countyEn);
     }
     if (!nullToAbsent || municipalityEn != null) {
       map['municipality_en'] = Variable<String>(municipalityEn);
@@ -614,6 +670,9 @@ class Locality extends DataClass implements Insertable<Locality> {
       prefectureJa: prefectureJa == null && nullToAbsent
           ? const Value.absent()
           : Value(prefectureJa),
+      countyJa: countyJa == null && nullToAbsent
+          ? const Value.absent()
+          : Value(countyJa),
       municipalityJa: municipalityJa == null && nullToAbsent
           ? const Value.absent()
           : Value(municipalityJa),
@@ -623,6 +682,9 @@ class Locality extends DataClass implements Insertable<Locality> {
       prefectureEn: prefectureEn == null && nullToAbsent
           ? const Value.absent()
           : Value(prefectureEn),
+      countyEn: countyEn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(countyEn),
       municipalityEn: municipalityEn == null && nullToAbsent
           ? const Value.absent()
           : Value(municipalityEn),
@@ -654,9 +716,11 @@ class Locality extends DataClass implements Insertable<Locality> {
       country: serializer.fromJson<String>(json['country']),
       municipalityCode: serializer.fromJson<String?>(json['municipalityCode']),
       prefectureJa: serializer.fromJson<String?>(json['prefectureJa']),
+      countyJa: serializer.fromJson<String?>(json['countyJa']),
       municipalityJa: serializer.fromJson<String?>(json['municipalityJa']),
       localityJa: serializer.fromJson<String?>(json['localityJa']),
       prefectureEn: serializer.fromJson<String?>(json['prefectureEn']),
+      countyEn: serializer.fromJson<String?>(json['countyEn']),
       municipalityEn: serializer.fromJson<String?>(json['municipalityEn']),
       localityEn: serializer.fromJson<String?>(json['localityEn']),
       placeStatus: $LocalitiesTable.$converterplaceStatus.fromJson(
@@ -683,9 +747,11 @@ class Locality extends DataClass implements Insertable<Locality> {
       'country': serializer.toJson<String>(country),
       'municipalityCode': serializer.toJson<String?>(municipalityCode),
       'prefectureJa': serializer.toJson<String?>(prefectureJa),
+      'countyJa': serializer.toJson<String?>(countyJa),
       'municipalityJa': serializer.toJson<String?>(municipalityJa),
       'localityJa': serializer.toJson<String?>(localityJa),
       'prefectureEn': serializer.toJson<String?>(prefectureEn),
+      'countyEn': serializer.toJson<String?>(countyEn),
       'municipalityEn': serializer.toJson<String?>(municipalityEn),
       'localityEn': serializer.toJson<String?>(localityEn),
       'placeStatus': serializer.toJson<String>(
@@ -708,9 +774,11 @@ class Locality extends DataClass implements Insertable<Locality> {
     String? country,
     Value<String?> municipalityCode = const Value.absent(),
     Value<String?> prefectureJa = const Value.absent(),
+    Value<String?> countyJa = const Value.absent(),
     Value<String?> municipalityJa = const Value.absent(),
     Value<String?> localityJa = const Value.absent(),
     Value<String?> prefectureEn = const Value.absent(),
+    Value<String?> countyEn = const Value.absent(),
     Value<String?> municipalityEn = const Value.absent(),
     Value<String?> localityEn = const Value.absent(),
     FetchStatus? placeStatus,
@@ -734,11 +802,13 @@ class Locality extends DataClass implements Insertable<Locality> {
         ? municipalityCode.value
         : this.municipalityCode,
     prefectureJa: prefectureJa.present ? prefectureJa.value : this.prefectureJa,
+    countyJa: countyJa.present ? countyJa.value : this.countyJa,
     municipalityJa: municipalityJa.present
         ? municipalityJa.value
         : this.municipalityJa,
     localityJa: localityJa.present ? localityJa.value : this.localityJa,
     prefectureEn: prefectureEn.present ? prefectureEn.value : this.prefectureEn,
+    countyEn: countyEn.present ? countyEn.value : this.countyEn,
     municipalityEn: municipalityEn.present
         ? municipalityEn.value
         : this.municipalityEn,
@@ -772,6 +842,7 @@ class Locality extends DataClass implements Insertable<Locality> {
       prefectureJa: data.prefectureJa.present
           ? data.prefectureJa.value
           : this.prefectureJa,
+      countyJa: data.countyJa.present ? data.countyJa.value : this.countyJa,
       municipalityJa: data.municipalityJa.present
           ? data.municipalityJa.value
           : this.municipalityJa,
@@ -781,6 +852,7 @@ class Locality extends DataClass implements Insertable<Locality> {
       prefectureEn: data.prefectureEn.present
           ? data.prefectureEn.value
           : this.prefectureEn,
+      countyEn: data.countyEn.present ? data.countyEn.value : this.countyEn,
       municipalityEn: data.municipalityEn.present
           ? data.municipalityEn.value
           : this.municipalityEn,
@@ -809,9 +881,11 @@ class Locality extends DataClass implements Insertable<Locality> {
           ..write('country: $country, ')
           ..write('municipalityCode: $municipalityCode, ')
           ..write('prefectureJa: $prefectureJa, ')
+          ..write('countyJa: $countyJa, ')
           ..write('municipalityJa: $municipalityJa, ')
           ..write('localityJa: $localityJa, ')
           ..write('prefectureEn: $prefectureEn, ')
+          ..write('countyEn: $countyEn, ')
           ..write('municipalityEn: $municipalityEn, ')
           ..write('localityEn: $localityEn, ')
           ..write('placeStatus: $placeStatus, ')
@@ -821,7 +895,7 @@ class Locality extends DataClass implements Insertable<Locality> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     latitude,
     longitude,
@@ -834,14 +908,16 @@ class Locality extends DataClass implements Insertable<Locality> {
     country,
     municipalityCode,
     prefectureJa,
+    countyJa,
     municipalityJa,
     localityJa,
     prefectureEn,
+    countyEn,
     municipalityEn,
     localityEn,
     placeStatus,
     createdAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -858,9 +934,11 @@ class Locality extends DataClass implements Insertable<Locality> {
           other.country == this.country &&
           other.municipalityCode == this.municipalityCode &&
           other.prefectureJa == this.prefectureJa &&
+          other.countyJa == this.countyJa &&
           other.municipalityJa == this.municipalityJa &&
           other.localityJa == this.localityJa &&
           other.prefectureEn == this.prefectureEn &&
+          other.countyEn == this.countyEn &&
           other.municipalityEn == this.municipalityEn &&
           other.localityEn == this.localityEn &&
           other.placeStatus == this.placeStatus &&
@@ -880,9 +958,11 @@ class LocalitiesCompanion extends UpdateCompanion<Locality> {
   final Value<String> country;
   final Value<String?> municipalityCode;
   final Value<String?> prefectureJa;
+  final Value<String?> countyJa;
   final Value<String?> municipalityJa;
   final Value<String?> localityJa;
   final Value<String?> prefectureEn;
+  final Value<String?> countyEn;
   final Value<String?> municipalityEn;
   final Value<String?> localityEn;
   final Value<FetchStatus> placeStatus;
@@ -900,9 +980,11 @@ class LocalitiesCompanion extends UpdateCompanion<Locality> {
     this.country = const Value.absent(),
     this.municipalityCode = const Value.absent(),
     this.prefectureJa = const Value.absent(),
+    this.countyJa = const Value.absent(),
     this.municipalityJa = const Value.absent(),
     this.localityJa = const Value.absent(),
     this.prefectureEn = const Value.absent(),
+    this.countyEn = const Value.absent(),
     this.municipalityEn = const Value.absent(),
     this.localityEn = const Value.absent(),
     this.placeStatus = const Value.absent(),
@@ -921,9 +1003,11 @@ class LocalitiesCompanion extends UpdateCompanion<Locality> {
     this.country = const Value.absent(),
     this.municipalityCode = const Value.absent(),
     this.prefectureJa = const Value.absent(),
+    this.countyJa = const Value.absent(),
     this.municipalityJa = const Value.absent(),
     this.localityJa = const Value.absent(),
     this.prefectureEn = const Value.absent(),
+    this.countyEn = const Value.absent(),
     this.municipalityEn = const Value.absent(),
     this.localityEn = const Value.absent(),
     required FetchStatus placeStatus,
@@ -947,9 +1031,11 @@ class LocalitiesCompanion extends UpdateCompanion<Locality> {
     Expression<String>? country,
     Expression<String>? municipalityCode,
     Expression<String>? prefectureJa,
+    Expression<String>? countyJa,
     Expression<String>? municipalityJa,
     Expression<String>? localityJa,
     Expression<String>? prefectureEn,
+    Expression<String>? countyEn,
     Expression<String>? municipalityEn,
     Expression<String>? localityEn,
     Expression<String>? placeStatus,
@@ -968,9 +1054,11 @@ class LocalitiesCompanion extends UpdateCompanion<Locality> {
       if (country != null) 'country': country,
       if (municipalityCode != null) 'municipality_code': municipalityCode,
       if (prefectureJa != null) 'prefecture_ja': prefectureJa,
+      if (countyJa != null) 'county_ja': countyJa,
       if (municipalityJa != null) 'municipality_ja': municipalityJa,
       if (localityJa != null) 'locality_ja': localityJa,
       if (prefectureEn != null) 'prefecture_en': prefectureEn,
+      if (countyEn != null) 'county_en': countyEn,
       if (municipalityEn != null) 'municipality_en': municipalityEn,
       if (localityEn != null) 'locality_en': localityEn,
       if (placeStatus != null) 'place_status': placeStatus,
@@ -991,9 +1079,11 @@ class LocalitiesCompanion extends UpdateCompanion<Locality> {
     Value<String>? country,
     Value<String?>? municipalityCode,
     Value<String?>? prefectureJa,
+    Value<String?>? countyJa,
     Value<String?>? municipalityJa,
     Value<String?>? localityJa,
     Value<String?>? prefectureEn,
+    Value<String?>? countyEn,
     Value<String?>? municipalityEn,
     Value<String?>? localityEn,
     Value<FetchStatus>? placeStatus,
@@ -1012,9 +1102,11 @@ class LocalitiesCompanion extends UpdateCompanion<Locality> {
       country: country ?? this.country,
       municipalityCode: municipalityCode ?? this.municipalityCode,
       prefectureJa: prefectureJa ?? this.prefectureJa,
+      countyJa: countyJa ?? this.countyJa,
       municipalityJa: municipalityJa ?? this.municipalityJa,
       localityJa: localityJa ?? this.localityJa,
       prefectureEn: prefectureEn ?? this.prefectureEn,
+      countyEn: countyEn ?? this.countyEn,
       municipalityEn: municipalityEn ?? this.municipalityEn,
       localityEn: localityEn ?? this.localityEn,
       placeStatus: placeStatus ?? this.placeStatus,
@@ -1063,6 +1155,9 @@ class LocalitiesCompanion extends UpdateCompanion<Locality> {
     if (prefectureJa.present) {
       map['prefecture_ja'] = Variable<String>(prefectureJa.value);
     }
+    if (countyJa.present) {
+      map['county_ja'] = Variable<String>(countyJa.value);
+    }
     if (municipalityJa.present) {
       map['municipality_ja'] = Variable<String>(municipalityJa.value);
     }
@@ -1071,6 +1166,9 @@ class LocalitiesCompanion extends UpdateCompanion<Locality> {
     }
     if (prefectureEn.present) {
       map['prefecture_en'] = Variable<String>(prefectureEn.value);
+    }
+    if (countyEn.present) {
+      map['county_en'] = Variable<String>(countyEn.value);
     }
     if (municipalityEn.present) {
       map['municipality_en'] = Variable<String>(municipalityEn.value);
@@ -1104,9 +1202,11 @@ class LocalitiesCompanion extends UpdateCompanion<Locality> {
           ..write('country: $country, ')
           ..write('municipalityCode: $municipalityCode, ')
           ..write('prefectureJa: $prefectureJa, ')
+          ..write('countyJa: $countyJa, ')
           ..write('municipalityJa: $municipalityJa, ')
           ..write('localityJa: $localityJa, ')
           ..write('prefectureEn: $prefectureEn, ')
+          ..write('countyEn: $countyEn, ')
           ..write('municipalityEn: $municipalityEn, ')
           ..write('localityEn: $localityEn, ')
           ..write('placeStatus: $placeStatus, ')
@@ -5036,9 +5136,11 @@ typedef $$LocalitiesTableCreateCompanionBuilder = LocalitiesCompanion Function({
   Value<String> country,
   Value<String?> municipalityCode,
   Value<String?> prefectureJa,
+  Value<String?> countyJa,
   Value<String?> municipalityJa,
   Value<String?> localityJa,
   Value<String?> prefectureEn,
+  Value<String?> countyEn,
   Value<String?> municipalityEn,
   Value<String?> localityEn,
   required FetchStatus placeStatus,
@@ -5057,9 +5159,11 @@ typedef $$LocalitiesTableUpdateCompanionBuilder = LocalitiesCompanion Function({
   Value<String> country,
   Value<String?> municipalityCode,
   Value<String?> prefectureJa,
+  Value<String?> countyJa,
   Value<String?> municipalityJa,
   Value<String?> localityJa,
   Value<String?> prefectureEn,
+  Value<String?> countyEn,
   Value<String?> municipalityEn,
   Value<String?> localityEn,
   Value<FetchStatus> placeStatus,
@@ -5181,6 +5285,11 @@ class $$LocalitiesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get countyJa => $composableBuilder(
+    column: $table.countyJa,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get municipalityJa => $composableBuilder(
     column: $table.municipalityJa,
     builder: (column) => ColumnFilters(column),
@@ -5193,6 +5302,11 @@ class $$LocalitiesTableFilterComposer
 
   ColumnFilters<String> get prefectureEn => $composableBuilder(
     column: $table.prefectureEn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get countyEn => $composableBuilder(
+    column: $table.countyEn,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5337,6 +5451,11 @@ class $$LocalitiesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get countyJa => $composableBuilder(
+    column: $table.countyJa,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get municipalityJa => $composableBuilder(
     column: $table.municipalityJa,
     builder: (column) => ColumnOrderings(column),
@@ -5349,6 +5468,11 @@ class $$LocalitiesTableOrderingComposer
 
   ColumnOrderings<String> get prefectureEn => $composableBuilder(
     column: $table.prefectureEn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get countyEn => $composableBuilder(
+    column: $table.countyEn,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -5431,6 +5555,9 @@ class $$LocalitiesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get countyJa =>
+      $composableBuilder(column: $table.countyJa, builder: (column) => column);
+
   GeneratedColumn<String> get municipalityJa => $composableBuilder(
     column: $table.municipalityJa,
     builder: (column) => column,
@@ -5445,6 +5572,9 @@ class $$LocalitiesTableAnnotationComposer
     column: $table.prefectureEn,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get countyEn =>
+      $composableBuilder(column: $table.countyEn, builder: (column) => column);
 
   GeneratedColumn<String> get municipalityEn => $composableBuilder(
     column: $table.municipalityEn,
@@ -5559,9 +5689,11 @@ class $$LocalitiesTableTableManager
                 Value<String> country = const Value.absent(),
                 Value<String?> municipalityCode = const Value.absent(),
                 Value<String?> prefectureJa = const Value.absent(),
+                Value<String?> countyJa = const Value.absent(),
                 Value<String?> municipalityJa = const Value.absent(),
                 Value<String?> localityJa = const Value.absent(),
                 Value<String?> prefectureEn = const Value.absent(),
+                Value<String?> countyEn = const Value.absent(),
                 Value<String?> municipalityEn = const Value.absent(),
                 Value<String?> localityEn = const Value.absent(),
                 Value<FetchStatus> placeStatus = const Value.absent(),
@@ -5579,9 +5711,11 @@ class $$LocalitiesTableTableManager
                 country: country,
                 municipalityCode: municipalityCode,
                 prefectureJa: prefectureJa,
+                countyJa: countyJa,
                 municipalityJa: municipalityJa,
                 localityJa: localityJa,
                 prefectureEn: prefectureEn,
+                countyEn: countyEn,
                 municipalityEn: municipalityEn,
                 localityEn: localityEn,
                 placeStatus: placeStatus,
@@ -5601,9 +5735,11 @@ class $$LocalitiesTableTableManager
                 Value<String> country = const Value.absent(),
                 Value<String?> municipalityCode = const Value.absent(),
                 Value<String?> prefectureJa = const Value.absent(),
+                Value<String?> countyJa = const Value.absent(),
                 Value<String?> municipalityJa = const Value.absent(),
                 Value<String?> localityJa = const Value.absent(),
                 Value<String?> prefectureEn = const Value.absent(),
+                Value<String?> countyEn = const Value.absent(),
                 Value<String?> municipalityEn = const Value.absent(),
                 Value<String?> localityEn = const Value.absent(),
                 required FetchStatus placeStatus,
@@ -5621,9 +5757,11 @@ class $$LocalitiesTableTableManager
                 country: country,
                 municipalityCode: municipalityCode,
                 prefectureJa: prefectureJa,
+                countyJa: countyJa,
                 municipalityJa: municipalityJa,
                 localityJa: localityJa,
                 prefectureEn: prefectureEn,
+                countyEn: countyEn,
                 municipalityEn: municipalityEn,
                 localityEn: localityEn,
                 placeStatus: placeStatus,
