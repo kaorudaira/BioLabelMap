@@ -46,6 +46,7 @@ dependencies:
   geolocator: ^14.1.1
   flutter_localizations:
     sdk: flutter
+  printing: ^5.15.1
 
 dev_dependencies:
   flutter_test:

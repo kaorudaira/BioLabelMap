@@ -1,0 +1,108 @@
+import 'package:drift/drift.dart';
+
+import '../core/db/database.dart';
+import '../domain/elevation_rounding.dart';
+import '../domain/label/collector_name_format.dart';
+import '../domain/label/data_label_builder.dart';
+import '../domain/label/data_label_layout.dart';
+import '../domain/models/collection_period.dart';
+import '../domain/status.dart';
+
+/// ラベル出力の候補になる標本1件(標本・採集・地点をまとめたもの)。
+class LabelCandidate {
+  const LabelCandidate(this.specimen, this.event, this.locality);
+
+  final Specimen specimen;
+  final CollectionEvent event;
+  final Locality locality;
+
+  bool get printed => specimen.printedAt != null;
+
+  /// 標高か地名が、まだ取得できていない(補完待ち)。
+  bool get pendingEnrichment =>
+      locality.elevationStatus == FetchStatus.pending ||
+      locality.placeStatus == FetchStatus.pending;
+
+  /// データラベルの材料。標高は設定の丸めで丸め、採集者名は `K. YOSHIHARA` の形にする。
+  DataLabelSource toSource(ElevationRounding rounding) => DataLabelSource(
+    country: locality.country,
+    prefectureEn: locality.prefectureEn,
+    countyEn: locality.countyEn,
+    municipalityEn: locality.municipalityEn,
+    localityEn: locality.localityEn,
+    elevationMeters: switch (locality.elevationMeters) {
+      final double e => rounding.apply(e),
+      null => null,
+    },
+    latitude: locality.latitude,
+    longitude: locality.longitude,
+    period: CollectionPeriod(event.startDate, event.endDate),
+    collector: switch (event.collector) {
+      final String c when c.trim().isNotEmpty => formatCollectorName(c),
+      _ => null,
+    },
+    countyJa: locality.countyJa,
+    municipalityJa: locality.municipalityJa,
+    localityJa: locality.localityJa,
+  );
+}
+
+/// ラベル出力(要件定義 S-07)のための問い合わせと、印刷済みの記録。
+class LabelService {
+  LabelService(this._db);
+
+  final AppDatabase _db;
+
+  /// ごみ箱を除く標本を、標本番号順に返す。DB が変わるたびに流れ直す。
+  Stream<List<LabelCandidate>> watchCandidates() {
+    final query = _db.select(_db.specimens).join([
+      innerJoin(_db.collectionEvents, _db.collectionEvents.id.equalsExp(_db.specimens.collectionEventId)),
+      innerJoin(_db.localities, _db.localities.id.equalsExp(_db.collectionEvents.localityId)),
+    ])
+      ..where(_db.specimens.deletedAt.isNull())
+      ..orderBy([OrderingTerm.asc(_db.specimens.catalogNumber)]);
+    // ↑ join は SQL の JOIN。readTable で各テーブルの行を取り出す(JPA の Tuple に近い)
+    return query.watch().map(
+      (rows) => [
+        for (final row in rows)
+          LabelCandidate(
+            row.readTable(_db.specimens),
+            row.readTable(_db.collectionEvents),
+            row.readTable(_db.localities),
+          ),
+      ],
+    );
+  }
+
+  /// 印刷済みにする。印字した標高と地名を標本ごとに残し、
+  /// のちに補完や修正で値が変わったら「ラベルと不一致」にできるようにする(要件定義 第13章)。
+  Future<void> markPrinted(Map<int, DataLabelLayout> printedLabels, {DateTime? now}) {
+    final printedAt = now ?? DateTime.now();
+    return _db.transaction(() async {
+      for (final MapEntry(key: specimenId, value: layout) in printedLabels.entries) {
+        await (_db.update(_db.specimens)..where((s) => s.id.equals(specimenId))).write(
+          SpecimensCompanion(
+            printedAt: Value(printedAt),
+            printedElevation: Value(printedElevationOf(layout)),
+            printedPlace: Value(printedPlaceOf(layout)),
+          ),
+        );
+      }
+    });
+  }
+}
+
+/// 印字した標高(`(alt. 1390 m)`)。印字していなければ空文字。
+String printedElevationOf(DataLabelLayout layout) {
+  final match = RegExp(r'\(alt\. (-?\d+) m\)').firstMatch(layout.lines.map((l) => l.text).join(' '));
+  return match?.group(1) ?? '';
+}
+
+/// 印字した地名(県・詳細住所・日本語の地名)。
+String printedPlaceOf(DataLabelLayout layout) => layout.lines
+    .where((l) => switch (l.role) {
+      DataLabelLineRole.header || DataLabelLineRole.address || DataLabelLineRole.japanese => true,
+      _ => false,
+    })
+    .map((l) => l.text)
+    .join(' ');

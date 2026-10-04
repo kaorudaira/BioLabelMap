@@ -7,8 +7,10 @@ import '../core/db/database.dart';
 import '../core/db/database_provider.dart';
 import '../core/gsi/gsi_api.dart';
 import '../core/gsi/municipality_directory.dart';
+import '../core/label/label_pdf.dart';
 import 'draft_service.dart';
 import 'enrichment_service.dart';
+import 'label_service.dart';
 import 'locality_lookup_service.dart';
 import 'map_query_service.dart';
 import 'record_service.dart';
@@ -32,6 +34,13 @@ final draftServiceProvider = Provider(
 final mapQueryServiceProvider = Provider(
   (ref) => MapQueryService(ref.watch(databaseProvider)),
 );
+
+final labelServiceProvider = Provider(
+  (ref) => LabelService(ref.watch(databaseProvider)),
+);
+
+/// ラベル用のフォント(約5MB)。ラベル出力を初めて開いたときに読み込む。
+final labelFontsProvider = FutureProvider((ref) => LabelFonts.load());
 
 final gsiApiProvider = Provider((ref) {
   final client = http.Client();
@@ -76,6 +85,10 @@ final draftsProvider = StreamProvider<List<Draft>>(
 
 final localityPinsProvider = StreamProvider<List<LocalityPin>>(
   (ref) => ref.watch(mapQueryServiceProvider).watchPins(),
+);
+
+final labelCandidatesProvider = StreamProvider<List<LabelCandidate>>(
+  (ref) => ref.watch(labelServiceProvider).watchCandidates(),
 );
 
 /// 補完キューを動かすきっかけを管理する(要件定義 第13章)。
