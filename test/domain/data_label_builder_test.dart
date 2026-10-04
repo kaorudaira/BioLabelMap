@@ -25,8 +25,8 @@ void main() {
     test('要件定義の例どおり7行になる', () {
       expect(buildDataLabel(example), const [
         DataLabelLine('JAPAN: Niigata-ken', DataLabelLineRole.header),
-        DataLabelLine('Uonuma-shi', DataLabelLineRole.body),
-        DataLabelLine('Shimooritate', DataLabelLineRole.body),
+        DataLabelLine('Uonuma-shi', DataLabelLineRole.address),
+        DataLabelLine('Shimooritate', DataLabelLineRole.address),
         DataLabelLine('(alt. 1390 m)', DataLabelLineRole.body),
         DataLabelLine('36.9447°N 139.2426°E', DataLabelLineRole.body),
         DataLabelLine('20. VI. 2026, K. YOSHIHARA', DataLabelLineRole.body),
@@ -59,7 +59,7 @@ void main() {
       ));
       expect(lines, hasLength(7));
       expect(lines[1], const DataLabelLine(
-          'Minamiuonuma-gun, Yuzawa-machi', DataLabelLineRole.body));
+          'Minamiuonuma-gun, Yuzawa-machi', DataLabelLineRole.address));
       expect(lines.last, const DataLabelLine(
           '南魚沼郡湯沢町土樽', DataLabelLineRole.japanese));
       expect(
@@ -130,8 +130,17 @@ void main() {
     test('既定の文字サイズは 4 / 3 / 3.5 pt', () {
       const style = DataLabelStyle();
       expect(style.sizeOf(DataLabelLineRole.header), 4);
+      expect(style.sizeOf(DataLabelLineRole.address), 3);
       expect(style.sizeOf(DataLabelLineRole.body), 3);
       expect(style.sizeOf(DataLabelLineRole.japanese), 3.5);
+    });
+
+    test('詳細住所(郡と市町村・大字・日本語の地名)だけを1段階(0.5pt)小さくする', () {
+      final reduced = const DataLabelStyle().withReducedDetailAddress();
+      expect(reduced.sizeOf(DataLabelLineRole.header), 4);
+      expect(reduced.sizeOf(DataLabelLineRole.address), 2.5);
+      expect(reduced.sizeOf(DataLabelLineRole.body), 3);
+      expect(reduced.sizeOf(DataLabelLineRole.japanese), 3);
     });
   });
 

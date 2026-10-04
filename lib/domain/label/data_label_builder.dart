@@ -7,40 +7,68 @@ enum DataLabelLineRole {
   /// 1行目(`JAPAN: 県`)。
   header,
 
-  /// 2〜6行目(郡と市町村・大字・標高・緯度経度・日付と採集者)。
+  /// 詳細住所(郡と市町村・大字)。7行に収まらないときに小さくする行。
+  address,
+
+  /// 標高・緯度経度・日付と採集者。
   body,
 
-  /// 7行目(日本語の地名)。
-  japanese,
+  /// 日本語の地名(郡+市町村+大字)。これも詳細住所として小さくする。
+  japanese;
+
+  /// 7行に収まらないときに、文字を1段階小さくする行か。
+  bool get isDetailAddress => this == address || this == japanese;
 }
 
 /// 行の種類ごとの文字サイズ(pt)。既定値は要件定義 第5章のとおり。
 class DataLabelStyle {
   const DataLabelStyle({
     this.headerPt = 4,
+    this.addressPt = 3,
     this.bodyPt = 3,
     this.japanesePt = 3.5,
+    this.reductionStepPt = 0.5,
   });
 
   final double headerPt;
+  final double addressPt;
   final double bodyPt;
   final double japanesePt;
+
+  /// 詳細住所を小さくするときの1段階(pt)。
+  final double reductionStepPt;
 
   // Dart 3 の switch 式。enum の全ケースを網羅しないとコンパイルエラーになる。
   // Java 21 の switch 式(パターンマッチ)とほぼ同じ。
   double sizeOf(DataLabelLineRole role) => switch (role) {
     DataLabelLineRole.header => headerPt,
+    DataLabelLineRole.address => addressPt,
     DataLabelLineRole.body => bodyPt,
     DataLabelLineRole.japanese => japanesePt,
   };
+
+  /// 詳細住所を1段階小さくした文字サイズ。
+  DataLabelStyle withReducedDetailAddress() => DataLabelStyle(
+    headerPt: headerPt,
+    addressPt: addressPt - reductionStepPt,
+    bodyPt: bodyPt,
+    japanesePt: japanesePt - reductionStepPt,
+    reductionStepPt: reductionStepPt,
+  );
 }
 
-/// データラベルの1行。
+/// データラベルの1行(改行する前の、論理的な1行)。
 class DataLabelLine {
-  const DataLabelLine(this.text, this.role);
+  /// [segments] は改行してよい区切り(日本語の地名の「郡・市町村・大字」など)。
+  /// 省略すると、行全体を1つの区切りとして扱う。
+  // `{this._segments}` は、名前付き引数 `segments` を private フィールドに代入する(最近の Dart の書き方)。
+  const DataLabelLine(this.text, this.role, {this._segments});
 
   final String text;
   final DataLabelLineRole role;
+  final List<String>? _segments;
+
+  List<String> get segments => _segments ?? [text];
 
   @override
   bool operator ==(Object other) =>
@@ -97,8 +125,8 @@ class DataLabelSource {
 
 /// データラベルの行を組み立てる(要件定義 第5章)。
 ///
-/// 項目ごとに改行し、最大7行で構成する。行末のカンマは付けない。
-/// 郡は市町村と同じ行に入れ、行数を増やさない(10mm の高さに収めるため)。
+/// 項目ごとに分け、最大7行で構成する。行末のカンマは付けない。
+/// 郡は市町村と同じ行に入れる。幅に収まらないときの改行は layoutDataLabel で行う。
 /// 未取得・空の項目は行ごと省き、空欄を残さない。
 List<DataLabelLine> buildDataLabel(DataLabelSource s) {
   final prefecture = _blankToNull(s.prefectureEn);
@@ -107,11 +135,12 @@ List<DataLabelLine> buildDataLabel(DataLabelSource s) {
     ?_blankToNull(s.municipalityEn),
   ].join(', ');
   // ↑ `?式` は null なら要素を入れない(Dart 3.8 の null-aware 要素)。
-  final japanese = [
+  final japaneseParts = [
     ?_blankToNull(s.countyJa),
     ?_blankToNull(s.municipalityJa),
     ?_blankToNull(s.localityJa),
-  ].join();
+  ];
+  final japanese = japaneseParts.join();
   final collector = _blankToNull(s.collector);
   final date = formatLabelPeriod(s.period);
 
@@ -123,9 +152,9 @@ List<DataLabelLine> buildDataLabel(DataLabelSource s) {
       DataLabelLineRole.header,
     ),
     if (municipality.isNotEmpty)
-      DataLabelLine(municipality, DataLabelLineRole.body),
+      DataLabelLine(municipality, DataLabelLineRole.address),
     if (_blankToNull(s.localityEn) case final l?)
-      DataLabelLine(l, DataLabelLineRole.body),
+      DataLabelLine(l, DataLabelLineRole.address),
     if (s.elevationMeters case final e?)
       DataLabelLine('(alt. $e m)', DataLabelLineRole.body),
     DataLabelLine(
@@ -137,7 +166,7 @@ List<DataLabelLine> buildDataLabel(DataLabelSource s) {
       DataLabelLineRole.body,
     ),
     if (japanese.isNotEmpty)
-      DataLabelLine(japanese, DataLabelLineRole.japanese),
+      DataLabelLine(japanese, DataLabelLineRole.japanese, segments: japaneseParts),
   ];
   // `if (x case final v?)` は「x が null でなければ v に束縛する」パターン。
   // Java の `if (x instanceof String v)` に近い。
