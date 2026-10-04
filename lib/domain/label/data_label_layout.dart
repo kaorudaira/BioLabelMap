@@ -65,6 +65,7 @@ class DataLabelLayout {
   const DataLabelLayout({
     required this.lines,
     required this.headerReduced,
+    required this.elevationJoined,
     required this.detailAddressReduced,
     required this.droppedJapaneseSegments,
     required this.japaneseOmitted,
@@ -75,6 +76,9 @@ class DataLabelLayout {
 
   /// 1行目(`JAPAN: 県`)が入らないため、1行目の文字を1段階小さくしたか。
   final bool headerReduced;
+
+  /// 詳細住所が3行以上になったため、標高を詳細住所の最後の行に続けたか。
+  final bool elevationJoined;
 
   /// 7行に収めるため、詳細住所の文字を1段階小さくしたか。
   final bool detailAddressReduced;
@@ -96,6 +100,8 @@ class DataLabelLayout {
 ///    区切りは「, 」を優先し、次に空白、最後にハイフンの後ろ。行末のカンマは残す。
 ///    ただし1行目(`JAPAN: 県`)は、入らなければまず文字を1段階小さくする(長い県名だけ)。
 ///    それでも入らないときに改行する。
+///    詳細住所(郡, 市町村, 大字)はひと続きで改行する。3行以上になるときは、最後で改行せず
+///    標高を続ける(`…, Tsuchitaru, (alt. 700 m)`)。
 /// 2. 日本語の地名は改行しない。1行に入らなければ、大きい行政区画(郡 → 市町村)から省いて収める。
 /// 3. それで [DataLabelLayoutSpec.maxLines] 行を超える、または日本語の地名が入らないときは、
 ///    詳細住所(郡と市町村・大字・日本語の地名)の文字を1段階小さくして、1〜2をやり直す。
@@ -136,10 +142,12 @@ class _Attempt {
     this.spec,
     this.measurer,
   ) {
-    for (final line in lines) {
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
       var size = style.sizeOf(line.role);
       bool fits(String s) => measurer.widthOf(s, size) <= spec.wrapWidthPt;
       // ↑ ローカル関数は外側の変数 size を参照する(Java のラムダと違い、再代入した値も見える)
+      List<String> wrap(String s) => fits(s) ? [s] : _wrapLatin(s, fits);
 
       // 1行目は、入らなければ1段階小さくする(長い県名だけ)
       if (line.role == DataLabelLineRole.header && !fits(line.text)) {
@@ -147,7 +155,19 @@ class _Attempt {
         headerReduced = true;
       }
 
-      if (line.role == DataLabelLineRole.japanese) {
+      if (line.role == DataLabelLineRole.address) {
+        var wrapped = wrap(line.text);
+        // 詳細住所が3行以上になるときは、最後で改行せず、標高を続ける(詳細住所の文字サイズで)
+        final next = i + 1 < lines.length ? lines[i + 1] : null;
+        if (wrapped.length >= 3 && next?.role == DataLabelLineRole.elevation) {
+          wrapped = wrap('${line.text}, ${next!.text}');
+          elevationJoined = true;
+          i++;
+        }
+        for (final text in wrapped) {
+          placed.add(PlacedLabelLine(text, line.role, size));
+        }
+      } else if (line.role == DataLabelLineRole.japanese) {
         final segments = line.segments;
         // 大きい行政区画から省き、1行に入る最長のものを使う(最後の1区画は残す)
         var start = 0;
@@ -159,7 +179,7 @@ class _Attempt {
         if (!fits(text)) japaneseDoesNotFit = true;
         placed.add(PlacedLabelLine(text, line.role, size));
       } else {
-        for (final text in fits(line.text) ? [line.text] : _wrapLatin(line.text, fits)) {
+        for (final text in wrap(line.text)) {
           placed.add(PlacedLabelLine(text, line.role, size));
         }
       }
@@ -172,6 +192,7 @@ class _Attempt {
   final dropped = <String>[];
   var japaneseDoesNotFit = false;
   var headerReduced = false;
+  var elevationJoined = false;
 
   bool get tooManyLines => placed.length > spec.maxLines;
 
@@ -185,6 +206,7 @@ class _Attempt {
       DataLabelLayout(
         lines: placed,
         headerReduced: headerReduced,
+        elevationJoined: elevationJoined,
         detailAddressReduced: reduced,
         droppedJapaneseSegments: dropped,
         japaneseOmitted: japaneseOmitted,
