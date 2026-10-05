@@ -52,6 +52,9 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.16.1
   drift_dev: ^2.35.1
+  archive: ^4.3.0
+  xml: ^7.1.0
+  charset: ^2.0.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -63,6 +66,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    # 自治体コード → 県・市区町村の名前(和・英)。tools/municipalities/ で生成する
+    - assets/data/municipalities.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:
