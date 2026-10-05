@@ -95,6 +95,38 @@ void main() {
     });
   });
 
+  group('詳細住所と標高', () {
+    const elevation = DataLabelLine('(alt. 7 m)', DataLabelLineRole.elevation);
+
+    test('詳細住所が3行以上になるときは、最後で改行せず標高を続ける', () {
+      final result = layout(
+        const [DataLabelLine('Aaaaaa, Bbbbb, Cccccc, Ddddd, G', DataLabelLineRole.address), elevation],
+        specFor3ptChars(14),
+      );
+      // 詳細住所だけなら「Aaaaaa, Bbbbb,」「Cccccc, Ddddd,」「G」の3行
+      expect(texts(result), ['Aaaaaa, Bbbbb,', 'Cccccc, Ddddd,', 'G, (alt. 7 m)']);
+      expect(result.elevationJoined, isTrue);
+      expect(result.lines.last.role, DataLabelLineRole.address);
+    });
+
+    test('詳細住所が2行までなら、最後で改行して標高を次の行にする', () {
+      final result = layout(
+        const [DataLabelLine('Aa, Bb, Cc, Dd, Ee', DataLabelLineRole.address), elevation],
+        specFor3ptChars(14),
+      );
+      expect(texts(result), ['Aa, Bb, Cc,', 'Dd, Ee', '(alt. 7 m)']);
+      expect(result.elevationJoined, isFalse);
+    });
+
+    test('続けた標高が入らなければ、次の行に送る(行末のカンマは残す)', () {
+      final result = layout(
+        const [DataLabelLine('Aa, Bb, Cc, Dd, Ee, Ff, Ggggggg', DataLabelLineRole.address), elevation],
+        specFor3ptChars(14),
+      );
+      expect(texts(result), ['Aa, Bb, Cc,', 'Dd, Ee, Ff,', 'Ggggggg,', '(alt. 7 m)']);
+    });
+  });
+
   group('日本語の地名', () {
     test('1行に入れば、そのまま', () {
       final result = layout([japanese(['南魚沼郡', '湯沢町', '土樽'])], specWrapAt(9 * 1.75 + 0.01));
@@ -248,76 +280,95 @@ void main() {
       }
     });
 
-    test('要件定義の例(魚沼市)は改行せず7行', () {
-      final result = layoutDefault(DataLabelSource(
-        prefectureEn: 'Niigata-ken',
+    DataLabelSource niigata({
+      String? countyEn,
+      required String municipalityEn,
+      required String localityEn,
+      String? countyJa,
+      required String municipalityJa,
+      required String localityJa,
+    }) => DataLabelSource(
+      prefectureEn: 'Niigata-ken',
+      countyEn: countyEn,
+      municipalityEn: municipalityEn,
+      localityEn: localityEn,
+      elevationMeters: 700,
+      latitude: 36.8834,
+      longitude: 138.8205,
+      period: CollectionPeriod.singleDay(CalendarDate(2026, 7, 5)),
+      collector: 'K. YOSHIHARA',
+      countyJa: countyJa,
+      municipalityJa: municipalityJa,
+      localityJa: localityJa,
+    );
+
+    List<(String, double)> textsAndSizes(DataLabelLayout r) =>
+        [for (final l in r.lines) (l.text, l.fontSizePt)];
+
+    test('要件定義の例(魚沼市)は、市町村と大字が1行に入り、6行', () {
+      final result = layoutDefault(niigata(
         municipalityEn: 'Uonuma-shi',
         localityEn: 'Shimooritate',
-        elevationMeters: 1390,
-        latitude: 36.9447,
-        longitude: 139.2426,
-        period: CollectionPeriod.singleDay(CalendarDate(2026, 6, 20)),
-        collector: 'K. YOSHIHARA',
         municipalityJa: '魚沼市',
         localityJa: '下折立',
       ));
-      expect(result.lines, hasLength(7));
+      expect(textsAndSizes(result), [
+        ('JAPAN: Niigata-ken', 4),
+        ('Uonuma-shi, Shimooritate', 3),
+        ('(alt. 700 m)', 3),
+        ('36.8834°N 138.8205°E', 3),
+        ('5. VII. 2026, K. YOSHIHARA', 3),
+        ('魚沼市下折立', 3.5),
+      ]);
       expect(result.detailAddressReduced, isFalse);
-      expect(result.japaneseOmitted, isFalse);
       expect(result.overflows, isFalse);
     });
 
-    test('郡が付いて長い行は、改行すると8行になるので、詳細住所を小さくして1行に戻す', () {
-      // Nakauonuma-gun, Tsunan-machi: 3pt で 40.6pt(改行)、2.5pt で 33.8pt(1行)
-      final result = layoutDefault(DataLabelSource(
-        prefectureEn: 'Niigata-ken',
-        countyEn: 'Nakauonuma-gun',
-        municipalityEn: 'Tsunan-machi',
-        localityEn: 'Akiyamagō',
-        elevationMeters: 700,
-        latitude: 36.8834,
-        longitude: 138.6205,
-        period: CollectionPeriod.singleDay(CalendarDate(2026, 7, 5)),
-        collector: 'K. YOSHIHARA',
-        countyJa: '中魚沼郡',
-        municipalityJa: '津南町',
-        localityJa: '秋山郷',
-      ));
-      expect(result.detailAddressReduced, isTrue);
-      expect(result.japaneseOmitted, isFalse);
-      expect(result.overflows, isFalse);
-      expect(result.lines, hasLength(7));
-      expect(result.lines[1],
-          const PlacedLabelLine('Nakauonuma-gun, Tsunan-machi', DataLabelLineRole.address, 2.5));
-    });
-
-    test('2.5pt でも郡と市町村が1行に入らないときは、日本語の地名を省く(確認が要る)', () {
-      // Minamiuonuma-gun, Yuzawa-machi: 2.5pt で 36.4pt(改行する幅 35.7pt を超える)
-      final result = layoutDefault(DataLabelSource(
-        prefectureEn: 'Niigata-ken',
+    test('郡が付くと詳細住所が2行になる。標高の前では改行する', () {
+      final result = layoutDefault(niigata(
         countyEn: 'Minamiuonuma-gun',
         municipalityEn: 'Yuzawa-machi',
         localityEn: 'Tsuchitaru',
-        elevationMeters: 700,
-        latitude: 36.8834,
-        longitude: 138.8205,
-        period: CollectionPeriod.singleDay(CalendarDate(2026, 7, 5)),
-        collector: 'K. YOSHIHARA',
         countyJa: '南魚沼郡',
         municipalityJa: '湯沢町',
         localityJa: '土樽',
       ));
-      expect(result.japaneseOmitted, isTrue);
-      expect(result.overflows, isFalse);
-      expect(result.lines.map((l) => l.text), [
-        'JAPAN: Niigata-ken',
-        'Minamiuonuma-gun,',
-        'Yuzawa-machi',
-        'Tsuchitaru',
-        '(alt. 700 m)',
-        '36.8834°N 138.8205°E',
-        '5. VII. 2026, K. YOSHIHARA',
+      expect(textsAndSizes(result), [
+        ('JAPAN: Niigata-ken', 4),
+        ('Minamiuonuma-gun,', 3),
+        ('Yuzawa-machi, Tsuchitaru', 3),
+        ('(alt. 700 m)', 3),
+        ('36.8834°N 138.8205°E', 3),
+        ('5. VII. 2026, K. YOSHIHARA', 3),
+        ('南魚沼郡湯沢町土樽', 3.5),
       ]);
+      expect(result.elevationJoined, isFalse);
+      expect(result.detailAddressReduced, isFalse);
+      expect(result.japaneseOmitted, isFalse);
+    });
+
+    test('詳細住所が3行になり8行を超えると、詳細住所を小さくする(2行に戻れば標高は続けない)', () {
+      final result = layoutDefault(niigata(
+        countyEn: 'Higashikambara-gun',
+        municipalityEn: 'Aga-machi',
+        localityEn: 'Kanoseshimonoyamaishido',
+        countyJa: '東蒲原郡',
+        municipalityJa: '阿賀町',
+        localityJa: '鹿瀬下山石戸',
+      ));
+      expect(textsAndSizes(result), [
+        ('JAPAN: Niigata-ken', 4),
+        ('Higashikambara-gun, Aga-machi,', 2.5),
+        ('Kanoseshimonoyamaishido', 2.5),
+        ('(alt. 700 m)', 3),
+        ('36.8834°N 138.8205°E', 3),
+        ('5. VII. 2026, K. YOSHIHARA', 3),
+        ('阿賀町鹿瀬下山石戸', 3),
+      ]);
+      expect(result.detailAddressReduced, isTrue);
+      expect(result.elevationJoined, isFalse);
+      // 日本語の地名は、一番大きい行政区画(郡)を省いて1行に収めている
+      expect(result.droppedJapaneseSegments, ['東蒲原郡']);
     });
   });
 }

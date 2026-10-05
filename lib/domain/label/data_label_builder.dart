@@ -7,10 +7,14 @@ enum DataLabelLineRole {
   /// 1行目(`JAPAN: 県`)。
   header,
 
-  /// 詳細住所(郡と市町村・大字)。7行に収まらないときに小さくする行。
+  /// 詳細住所(郡, 市町村, 大字)。ひと続きで書き、幅に収まらないときだけ改行する。
+  /// 7行に収まらないときに小さくする。
   address,
 
-  /// 標高・緯度経度・日付と採集者。
+  /// 標高。詳細住所が3行以上になるときは、詳細住所の最後の行に続ける。
+  elevation,
+
+  /// 緯度経度・日付と採集者。
   body,
 
   /// 日本語の地名(郡+市町村+大字)。これも詳細住所として小さくする。
@@ -43,7 +47,7 @@ class DataLabelStyle {
   double sizeOf(DataLabelLineRole role) => switch (role) {
     DataLabelLineRole.header => headerPt,
     DataLabelLineRole.address => addressPt,
-    DataLabelLineRole.body => bodyPt,
+    DataLabelLineRole.elevation || DataLabelLineRole.body => bodyPt,
     DataLabelLineRole.japanese => japanesePt,
   };
 
@@ -107,7 +111,7 @@ class DataLabelSource {
   // Java の @Nullable / Optional を型システムで強制するイメージ。
   final String? prefectureEn;
 
-  /// 郡(町村のみ)。市町村と同じ行に `Minamiuonuma-gun, Yuzawa-machi` の形で入る。
+  /// 郡(町村のみ)。詳細住所の先頭に `Minamiuonuma-gun, Yuzawa-machi, …` の形で入る。
   final String? countyEn;
   final String? municipalityEn;
   final String? localityEn;
@@ -125,14 +129,15 @@ class DataLabelSource {
 
 /// データラベルの行を組み立てる(要件定義 第5章)。
 ///
-/// 項目ごとに分け、最大7行で構成する。行末のカンマは付けない。
-/// 郡は市町村と同じ行に入れる。幅に収まらないときの改行は layoutDataLabel で行う。
-/// 未取得・空の項目は行ごと省き、空欄を残さない。
+/// 改行するのは「JAPAN: 県」の後、詳細住所(郡, 市町村, 大字)の最後、標高、緯度経度、
+/// 日付と採集者の後。詳細住所はひと続きで、幅に収まらないときだけ layoutDataLabel が改行する。
+/// 各項目の終わりのカンマは付けない。未取得・空の項目は省き、空欄を残さない。
 List<DataLabelLine> buildDataLabel(DataLabelSource s) {
   final prefecture = _blankToNull(s.prefectureEn);
-  final municipality = [
+  final address = [
     ?_blankToNull(s.countyEn),
     ?_blankToNull(s.municipalityEn),
+    ?_blankToNull(s.localityEn),
   ].join(', ');
   // ↑ `?式` は null なら要素を入れない(Dart 3.8 の null-aware 要素)。
   final japaneseParts = [
@@ -151,12 +156,9 @@ List<DataLabelLine> buildDataLabel(DataLabelSource s) {
       prefecture == null ? s.country : '${s.country}: $prefecture',
       DataLabelLineRole.header,
     ),
-    if (municipality.isNotEmpty)
-      DataLabelLine(municipality, DataLabelLineRole.address),
-    if (_blankToNull(s.localityEn) case final l?)
-      DataLabelLine(l, DataLabelLineRole.address),
+    if (address.isNotEmpty) DataLabelLine(address, DataLabelLineRole.address),
     if (s.elevationMeters case final e?)
-      DataLabelLine('(alt. $e m)', DataLabelLineRole.body),
+      DataLabelLine('(alt. $e m)', DataLabelLineRole.elevation),
     DataLabelLine(
       formatCoordinates(s.latitude, s.longitude),
       DataLabelLineRole.body,

@@ -22,12 +22,11 @@ void main() {
   );
 
   group('buildDataLabel', () {
-    test('要件定義の例どおり7行になる', () {
+    test('改行は、県・詳細住所の最後・標高・緯度経度・日付と採集者の後', () {
       expect(buildDataLabel(example), const [
         DataLabelLine('JAPAN: Niigata-ken', DataLabelLineRole.header),
-        DataLabelLine('Uonuma-shi', DataLabelLineRole.address),
-        DataLabelLine('Shimooritate', DataLabelLineRole.address),
-        DataLabelLine('(alt. 1390 m)', DataLabelLineRole.body),
+        DataLabelLine('Uonuma-shi, Shimooritate', DataLabelLineRole.address),
+        DataLabelLine('(alt. 1390 m)', DataLabelLineRole.elevation),
         DataLabelLine('36.9447°N 139.2426°E', DataLabelLineRole.body),
         DataLabelLine('20. VI. 2026, K. YOSHIHARA', DataLabelLineRole.body),
         DataLabelLine('魚沼市下折立', DataLabelLineRole.japanese),
@@ -42,7 +41,7 @@ void main() {
       );
     });
 
-    test('郡は市町村と同じ行に入れ、7行のまま', () {
+    test('郡・市町村・大字は、ひと続きの詳細住所にする', () {
       final lines = buildDataLabel(DataLabelSource(
         prefectureEn: 'Niigata-ken',
         countyEn: 'Minamiuonuma-gun',
@@ -57,9 +56,9 @@ void main() {
         municipalityJa: '湯沢町',
         localityJa: '土樽',
       ));
-      expect(lines, hasLength(7));
+      expect(lines, hasLength(6));
       expect(lines[1], const DataLabelLine(
-          'Minamiuonuma-gun, Yuzawa-machi', DataLabelLineRole.address));
+          'Minamiuonuma-gun, Yuzawa-machi, Tsuchitaru', DataLabelLineRole.address));
       expect(lines.last, const DataLabelLine(
           '南魚沼郡湯沢町土樽', DataLabelLineRole.japanese));
       expect(
