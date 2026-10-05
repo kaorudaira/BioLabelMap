@@ -6,6 +6,7 @@ import 'package:printing/printing.dart';
 
 import '../../app/theme.dart';
 import '../../core/db/database.dart';
+import '../../core/gsi/oaza_romaji_table.dart';
 import '../../core/label/label_pdf.dart';
 import '../../domain/elevation_rounding.dart';
 import '../../domain/label/data_label_builder.dart';
@@ -15,6 +16,7 @@ import '../../domain/label/label_sheet.dart';
 import '../../services/label_service.dart';
 import '../../services/service_providers.dart';
 import '../record/macron_buttons.dart';
+import '../record/romaji_candidate.dart';
 
 /// ラベル出力(要件定義 S-07)。段階1はデータラベルとコレクションラベルのみ。
 class LabelScreen extends ConsumerStatefulWidget {
@@ -150,7 +152,10 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
   Future<void> _editRomaji(Locality locality) async {
     final en = await showDialog<String>(
       context: context,
-      builder: (context) => _RomajiDialog(locality: locality),
+      builder: (context) => _RomajiDialog(
+        locality: locality,
+        candidate: ref.read(oazaRomajiTableProvider).lookup(locality.municipalityCode, locality.localityJa),
+      ),
     );
     if (en == null) return;
     try {
@@ -378,9 +383,12 @@ class _PreviewScreen extends StatelessWidget {
 
 /// 大字のローマ字の入力。入力した綴りを返し、やめたら null。
 class _RomajiDialog extends StatefulWidget {
-  const _RomajiDialog({required this.locality});
+  const _RomajiDialog({required this.locality, this.candidate});
 
   final Locality locality;
+
+  /// 公的データから作った候補。
+  final OazaRomaji? candidate;
 
   @override
   State<_RomajiDialog> createState() => _RomajiDialogState();
@@ -425,6 +433,12 @@ class _RomajiDialogState extends State<_RomajiDialog> {
           ),
           const SizedBox(height: 6),
           MacronButtons(controller: _controller, onInserted: () => setState(() {})),
+          if (_controller.text.trim().isEmpty)
+            if (widget.candidate case final candidate?)
+              RomajiCandidate(
+                candidate: candidate,
+                onUse: () => setState(() => _controller.text = candidate.value),
+              ),
           const SizedBox(height: 6),
           Text('同じ大字のほかの地点にも入り、次に記録するときは自動で入ります。',
               style: Theme.of(context).textTheme.bodySmall),

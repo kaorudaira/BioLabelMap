@@ -7,6 +7,7 @@ import '../core/db/database.dart';
 import '../core/db/database_provider.dart';
 import '../core/gsi/gsi_api.dart';
 import '../core/gsi/municipality_directory.dart';
+import '../core/gsi/oaza_romaji_table.dart';
 import '../core/label/label_pdf.dart';
 import 'backup_service.dart';
 import 'draft_service.dart';
@@ -58,11 +59,16 @@ final municipalityDirectoryProvider = Provider<MunicipalityDirectory>(
   (ref) => throw UnimplementedError('起動時に override してください'),
 );
 
+/// 大字のローマ字の対応表(公的データ)。アプリ起動時に assets から読み込んで差し替える。
+/// 差し替えないとき(テストなど)は空の表になる。
+final oazaRomajiTableProvider = Provider<OazaRomajiTable>((ref) => OazaRomajiTable.empty);
+
 final localityLookupServiceProvider = Provider(
   (ref) => LocalityLookupService(
     ref.watch(databaseProvider),
     ref.watch(gsiApiProvider),
     ref.watch(municipalityDirectoryProvider),
+    oaza: ref.watch(oazaRomajiTableProvider),
   ),
 );
 
@@ -71,6 +77,7 @@ final enrichmentServiceProvider = Provider(
     ref.watch(databaseProvider),
     ref.watch(gsiApiProvider),
     ref.watch(municipalityDirectoryProvider),
+    oaza: ref.watch(oazaRomajiTableProvider),
   ),
 );
 

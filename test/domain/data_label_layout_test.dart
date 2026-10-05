@@ -167,7 +167,7 @@ void main() {
     List<DataLabelLine> eightLinesWhenWrapped() => List.of([
       const DataLabelLine('JAPAN: Niigata-ken', DataLabelLineRole.header),
       const DataLabelLine('Minamiuonuma-gun, Yuzawa-machi', DataLabelLineRole.address),
-      const DataLabelLine('Tsuchitaru', DataLabelLineRole.address),
+      const DataLabelLine('Tsuchidaru', DataLabelLineRole.address),
       const DataLabelLine('(alt. 700 m)', DataLabelLineRole.body),
       const DataLabelLine('36.8834°N', DataLabelLineRole.body),
       const DataLabelLine('5. VII. 2026', DataLabelLineRole.body),
@@ -331,7 +331,7 @@ void main() {
       final result = layoutDefault(niigata(
         countyEn: 'Minamiuonuma-gun',
         municipalityEn: 'Yuzawa-machi',
-        localityEn: 'Tsuchitaru',
+        localityEn: 'Tsuchidaru',
         countyJa: '南魚沼郡',
         municipalityJa: '湯沢町',
         localityJa: '土樽',
@@ -339,7 +339,7 @@ void main() {
       expect(textsAndSizes(result), [
         ('JAPAN: Niigata-ken', 4),
         ('Minamiuonuma-gun,', 3),
-        ('Yuzawa-machi, Tsuchitaru', 3),
+        ('Yuzawa-machi, Tsuchidaru', 3),
         ('(alt. 700 m)', 3),
         ('36.8834°N 138.8205°E', 3),
         ('5. VII. 2026, K. YOSHIHARA', 3),

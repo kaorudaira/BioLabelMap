@@ -17,6 +17,7 @@ import '../../services/record_service.dart';
 import '../../services/service_providers.dart';
 import 'form_block.dart';
 import 'macron_buttons.dart';
+import 'romaji_candidate.dart';
 import 'record_form.dart';
 
 /// 記録画面を開くときの引数。go_router の `extra` で渡す。
@@ -289,7 +290,8 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
         ),
         _row('地名', _lookingUp ? '取得中…' : (placeJa.isEmpty ? pending : placeJa)),
         if (placeEn.isNotEmpty) _row('', placeEn),
-        // 大字のローマ字は手入力(辞書にあれば自動で入る)
+        // 大字のローマ字は手入力。辞書か公的データ(マクロンを含まないもの)にあれば自動で入る。
+        // 公的データのマクロンを含む候補は、確かめてから「使う」で入れる
         if (existing == null && _form.place?.localityJa != null) ...[
           const SizedBox(height: 6),
           TextField(
@@ -305,6 +307,16 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
           MacronButtons(controller: _localityEn, onInserted: () {
             _edited(() => _form.place = _form.place!.withLocalityEn(_localityEn.text.trim()));
           }),
+          if (_localityEn.text.trim().isEmpty)
+            if (ref.watch(oazaRomajiTableProvider).lookup(_form.place!.municipalityCode, _form.place!.localityJa)
+                case final candidate?)
+              RomajiCandidate(
+                candidate: candidate,
+                onUse: () {
+                  _localityEn.text = candidate.value;
+                  _edited(() => _form.place = _form.place!.withLocalityEn(candidate.value));
+                },
+              ),
         ],
         if (existing == null && !_lookingUp && _offline)
           Align(
