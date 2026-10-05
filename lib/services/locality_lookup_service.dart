@@ -42,6 +42,29 @@ Future<PlaceInfo> buildPlaceInfo(
   );
 }
 
+/// 手入力した大字のローマ字を辞書に溜める。同じ大字がすでにあれば、新しい綴りで置き換える。
+Future<void> rememberPlaceRomaji(
+  AppDatabase db, {
+  required String municipalityCode,
+  required String localityJa,
+  required String localityEn,
+}) => db.into(db.placeRomajiDict).insert(
+  PlaceRomajiDictCompanion.insert(
+    municipalityCode: municipalityCode,
+    localityJa: localityJa,
+    localityEn: localityEn,
+    useCount: const Value(1),
+  ),
+  onConflict: DoUpdate.withExcluded(
+    (old, excluded) => PlaceRomajiDictCompanion.custom(
+      localityEn: excluded.localityEn,
+      useCount: old.useCount + const Constant(1),
+      updatedAt: currentDateAndTime,
+    ),
+    target: [db.placeRomajiDict.municipalityCode, db.placeRomajiDict.localityJa],
+  ),
+);
+
 /// 記録画面での取得結果。取れなかったものは null(保存すると補完キューに入る)。
 class LookupResult {
   const LookupResult({this.elevationMeters, this.place, this.offline = false});

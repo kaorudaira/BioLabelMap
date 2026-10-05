@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -17,6 +16,7 @@ import '../../domain/status.dart';
 import '../../services/record_service.dart';
 import '../../services/service_providers.dart';
 import 'form_block.dart';
+import 'macron_buttons.dart';
 import 'record_form.dart';
 
 /// 記録画面を開くときの引数。go_router の `extra` で渡す。
@@ -302,7 +302,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
             ),
             onChanged: (v) => _edited(() => _form.place = _form.place!.withLocalityEn(v.trim().isEmpty ? null : v.trim())),
           ),
-          _MacronButtons(controller: _localityEn, onInserted: () {
+          MacronButtons(controller: _localityEn, onInserted: () {
             _edited(() => _form.place = _form.place!.withLocalityEn(_localityEn.text.trim()));
           }),
         ],
@@ -488,37 +488,4 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
       if (!_dirty) setState(() => _dirty = true);
     },
   );
-}
-
-/// マクロン付きの文字を入れるボタン(要件定義 第5章「ローマ字表記」)。
-class _MacronButtons extends StatelessWidget {
-  const _MacronButtons({required this.controller, required this.onInserted});
-
-  final TextEditingController controller;
-  final VoidCallback onInserted;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 6,
-      children: [
-        for (final c in const ['ō', 'ū', 'Ō', 'Ū'])
-          ActionChip(
-            label: Text(c, style: const TextStyle(fontSize: 18)),
-            onPressed: () {
-              final sel = controller.selection;
-              final text = controller.text;
-              final start = sel.isValid ? sel.start : text.length;
-              final end = sel.isValid ? sel.end : text.length;
-              controller.value = TextEditingValue(
-                text: text.replaceRange(start, end, c),
-                selection: TextSelection.collapsed(offset: start + c.length),
-              );
-              HapticFeedback.selectionClick();
-              onInserted();
-            },
-          ),
-      ],
-    );
-  }
 }

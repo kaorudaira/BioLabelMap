@@ -166,4 +166,84 @@ void main() {
       expect(after.first.specimen.printedPlace, 'JAPAN: Niigata-ken Uonuma-shi, Shimooritate 魚沼市下折立');
     });
   });
+
+  group('大字のローマ字をラベル出力で入れる', () {
+    late AppDatabase db;
+    late LabelService labels;
+
+    // 圏外で記録し、あとから地名だけ補完された状態(ローマ字は空)
+    PlaceInfo place(String localityJa) => PlaceInfo(
+      municipalityCode: '15225',
+      prefectureJa: '新潟県',
+      municipalityJa: '魚沼市',
+      localityJa: localityJa,
+      prefectureEn: 'Niigata-ken',
+      municipalityEn: 'Uonuma-shi',
+    );
+
+    Future<void> record(double lat, PlaceInfo? place) => RecordService(db).save(RecordInput(
+      position: NewPosition(latitude: lat, longitude: 139.2426, elevationMeters: 1388, place: place),
+      period: CollectionPeriod.singleDay(CalendarDate(2026, 6, 20)),
+      recordedAt: DateTime(2026, 6, 20),
+      samplingMethod: SamplingMethod.sweeping,
+    ));
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      labels = LabelService(db);
+      await SettingsService(db).initializeCatalog(122);
+      await record(36.9447, place('下折立')); // KYC00123
+      await record(36.9512, place('下折立')); // KYC00124(同じ大字の別地点)
+      await record(36.9600, place('上折立')); // KYC00125
+      await record(36.9700, null); // KYC00126(地名は補完待ち)
+    });
+
+    tearDown(() => db.close());
+
+    Future<Map<String, LabelCandidate>> candidates() async => {
+      for (final c in await labels.watchCandidates().first) c.specimen.catalogText: c,
+    };
+
+    test('大字があってローマ字が空の地点だけを、未入力として扱う', () async {
+      final c = await candidates();
+      expect(c['KYC00123']!.missingLocalityRomaji, isTrue);
+      expect(c['KYC00125']!.missingLocalityRomaji, isTrue);
+      // 補完待ちは大字がまだ分からないので、未入力には数えない(補完待ちとして警告する)
+      expect(c['KYC00126']!.missingLocalityRomaji, isFalse);
+      expect(c['KYC00126']!.pendingEnrichment, isTrue);
+    });
+
+    test('入れたローマ字は、同じ大字の地点すべてと辞書に入り、ラベルに印字される', () async {
+      final c = await candidates();
+      await labels.setLocalityRomaji(c['KYC00123']!.locality.id, '  Shimooritate ');
+
+      final after = await candidates();
+      expect(after['KYC00123']!.locality.localityEn, 'Shimooritate');
+      expect(after['KYC00124']!.locality.localityEn, 'Shimooritate');
+      expect(after['KYC00125']!.missingLocalityRomaji, isTrue);
+
+      final dict = await db.select(db.placeRomajiDict).getSingle();
+      expect((dict.municipalityCode, dict.localityJa, dict.localityEn), ('15225', '下折立', 'Shimooritate'));
+
+      final lines = buildDataLabel(after['KYC00124']!.toSource(ElevationRounding.tenMeters));
+      expect(lines.map((l) => l.text).join(' '), contains('Shimooritate'));
+    });
+
+    test('入力済みのほかの地点の綴りは変えない', () async {
+      final c = await candidates();
+      await labels.setLocalityRomaji(c['KYC00124']!.locality.id, 'Shimo-oritate');
+      await labels.setLocalityRomaji(c['KYC00123']!.locality.id, 'Shimooritate');
+
+      final after = await candidates();
+      expect(after['KYC00124']!.locality.localityEn, 'Shimo-oritate');
+      expect(after['KYC00123']!.locality.localityEn, 'Shimooritate');
+      // 辞書は最後に入れた綴り
+      expect((await db.select(db.placeRomajiDict).getSingle()).localityEn, 'Shimooritate');
+    });
+
+    test('空のローマ字は受け付けない', () async {
+      final c = await candidates();
+      expect(() => labels.setLocalityRomaji(c['KYC00123']!.locality.id, ' '), throwsArgumentError);
+    });
+  });
 }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
 
 import '../../app/theme.dart';
+import '../../core/db/database.dart';
 import '../../core/label/label_pdf.dart';
 import '../../domain/elevation_rounding.dart';
 import '../../domain/label/data_label_builder.dart';
@@ -13,6 +14,7 @@ import '../../domain/label/date_range_format.dart';
 import '../../domain/label/label_sheet.dart';
 import '../../services/label_service.dart';
 import '../../services/service_providers.dart';
+import '../record/macron_buttons.dart';
 
 /// ラベル出力(要件定義 S-07)。段階1はデータラベルとコレクションラベルのみ。
 class LabelScreen extends ConsumerStatefulWidget {
@@ -48,6 +50,7 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
         padding: const EdgeInsets.all(12),
         children: [
           _options(),
+          _missingRomajiCard(visible),
           const SizedBox(height: 12),
           Text('対象の標本 ${targets.length}件', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
@@ -108,6 +111,53 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
         ),
       ),
     );
+  }
+
+  /// 大字のローマ字が未入力の地点(地点ごとに1件)。
+  static List<Locality> _localitiesMissingRomaji(List<LabelCandidate> list) => {
+    for (final c in list)
+      if (c.missingLocalityRomaji) c.locality.id: c.locality,
+  }.values.toList();
+
+  /// 大字のローマ字が未入力の地点を知らせ、その場で入力できるようにする。
+  /// 圏外で記録した初めての場所は、記録画面でローマ字を入れられないため。
+  Widget _missingRomajiCard(List<LabelCandidate> visible) {
+    final localities = _localitiesMissingRomaji(visible);
+    if (localities.isEmpty) return const SizedBox.shrink();
+    return Card(
+      color: warningColor.withValues(alpha: 0.08),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('大字のローマ字が未入力の地点 ${localities.length}件',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(color: warningColor)),
+            const Text('このままではラベルに大字の英語表記が入りません。'),
+            for (final l in localities)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text([l.countyJa, l.municipalityJa, l.localityJa].nonNulls.join()),
+                subtitle: Text([l.municipalityEn, l.prefectureEn].nonNulls.join(', ')),
+                trailing: OutlinedButton(onPressed: () => _editRomaji(l), child: const Text('入力')),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editRomaji(Locality locality) async {
+    final en = await showDialog<String>(
+      context: context,
+      builder: (context) => _RomajiDialog(locality: locality),
+    );
+    if (en == null) return;
+    try {
+      await ref.read(labelServiceProvider).setLocalityRomaji(locality.id, en);
+    } catch (e) {
+      _snack('保存できませんでした: $e');
+    }
   }
 
   /// 同じ採集(同地点・同日)の標本を1行にまとめる。
@@ -186,6 +236,23 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
       }
     }
 
+    // 2. 大字のローマ字が未入力の地点があれば、先に入力するか確認する
+    final missing = _localitiesMissingRomaji(targets);
+    if (missing.isNotEmpty) {
+      final choice = await _ask(
+        '大字のローマ字が未入力の地点が${missing.length}件あります',
+        'このまま印刷すると、ラベルに大字の英語表記が入りません。\n'
+            '${missing.take(5).map((l) => [l.municipalityJa, l.localityJa].nonNulls.join()).join('、')}'
+            '${missing.length > 5 ? ' ほか' : ''}',
+        ['先に入力する', 'そのまま印刷'],
+      );
+      if (choice == null) return;
+      if (choice == 0) {
+        _snack('上の「大字のローマ字が未入力の地点」から入力してください');
+        return;
+      }
+    }
+
     final fonts = await ref.read(labelFontsProvider.future);
     final rounding = ref.read(settingsProvider).value?.elevationRounding ?? ElevationRounding.tenMeters;
     DataLabelLayout layoutOf(LabelCandidate c, {bool allowOmit = true}) => layoutDataLabel(
@@ -195,7 +262,7 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
     );
     final layouts = {for (final c in targets) c.specimen.id: layoutOf(c)};
 
-    // 2. 日本語の地名を省くラベルがあれば、省いてよいか確認する(要件定義 第5章)
+    // 3. 日本語の地名を省くラベルがあれば、省いてよいか確認する(要件定義 第5章)
     final omitted = [for (final c in targets) if (layouts[c.specimen.id]!.japaneseOmitted) c];
     if (omitted.isNotEmpty) {
       final choice = await _ask(
@@ -213,7 +280,7 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
       }
     }
 
-    // 3. PDF を作り、プレビューを開く
+    // 4. PDF を作り、プレビューを開く
     final labels = arrangeLabels(
       [
         for (final c in targets)
@@ -232,7 +299,7 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
       MaterialPageRoute<void>(builder: (_) => _PreviewScreen(bytes: bytes, overflowing: overflowing)),
     );
 
-    // 4. 印刷済みにするか(「はい」のときだけ記録する)
+    // 5. 印刷済みにするか(「はい」のときだけ記録する)
     if (!mounted) return;
     final mark = await _ask(
       '印刷済みにしますか',
@@ -305,6 +372,71 @@ class _PreviewScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 大字のローマ字の入力。入力した綴りを返し、やめたら null。
+class _RomajiDialog extends StatefulWidget {
+  const _RomajiDialog({required this.locality});
+
+  final Locality locality;
+
+  @override
+  State<_RomajiDialog> createState() => _RomajiDialogState();
+}
+
+class _RomajiDialogState extends State<_RomajiDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final en = _controller.text.trim();
+    if (en.isNotEmpty) Navigator.pop(context, en);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = widget.locality;
+    return AlertDialog(
+      title: Text('${l.localityJa} のローマ字'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text([l.countyJa, l.municipalityJa, l.localityJa].nonNulls.join()),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: '大字のローマ字',
+              hintText: '例: Shimooritate',
+              border: OutlineInputBorder(),
+            ),
+            textCapitalization: TextCapitalization.words,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 6),
+          MacronButtons(controller: _controller, onInserted: () => setState(() {})),
+          const SizedBox(height: 6),
+          Text('同じ大字のほかの地点にも入り、次に記録するときは自動で入ります。',
+              style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('やめる')),
+        FilledButton(
+          onPressed: _controller.text.trim().isEmpty ? null : _submit,
+          child: const Text('保存'),
+        ),
+      ],
     );
   }
 }
