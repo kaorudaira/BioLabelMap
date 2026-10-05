@@ -330,9 +330,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               title: const Text('ラベル出力'),
               onTap: () => Navigator.pop(context, '/labels'),
             ),
-            // 段階1の残り(設定・バックアップ)を作るまでは無効
-            const ListTile(leading: Icon(Icons.settings), title: Text('設定(準備中)'), enabled: false),
-            const ListTile(leading: Icon(Icons.backup), title: Text('バックアップ(準備中)'), enabled: false),
+            ListTile(
+              leading: const Icon(Icons.backup),
+              title: const Text('バックアップ'),
+              onTap: () => Navigator.pop(context, '/backup'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('設定'),
+              onTap: () => Navigator.pop(context, '/settings'),
+            ),
           ],
         ),
       ),

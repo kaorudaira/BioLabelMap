@@ -8,6 +8,7 @@ import '../core/db/database_provider.dart';
 import '../core/gsi/gsi_api.dart';
 import '../core/gsi/municipality_directory.dart';
 import '../core/label/label_pdf.dart';
+import 'backup_service.dart';
 import 'draft_service.dart';
 import 'enrichment_service.dart';
 import 'label_service.dart';
@@ -33,6 +34,10 @@ final draftServiceProvider = Provider(
 
 final mapQueryServiceProvider = Provider(
   (ref) => MapQueryService(ref.watch(databaseProvider)),
+);
+
+final backupServiceProvider = Provider(
+  (ref) => BackupService(ref.watch(databaseProvider)),
 );
 
 final labelServiceProvider = Provider(

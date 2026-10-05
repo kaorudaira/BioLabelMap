@@ -32,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.open() => AppDatabase(driftDatabase(name: 'biolabelmap'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -40,6 +40,12 @@ class AppDatabase extends _$AppDatabase {
       await m.createAll();
       // 設定は常に1行ある状態にする。
       await into(appSettings).insert(AppSettingsCompanion.insert());
+    },
+    onUpgrade: (m, from, to) async {
+      // 1 → 2: 最後にバックアップした日時
+      if (from < 2) {
+        await m.addColumn(appSettings, appSettings.lastBackupAt);
+      }
     },
     beforeOpen: (details) async {
       // SQLite は既定で外部キーを検査しないため、接続ごとに有効にする。

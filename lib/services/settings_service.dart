@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../core/db/database.dart';
+import '../domain/catalog_number.dart';
 
 /// 標本番号の初回設定が済んでいない(要件定義 第14章)。
 class CatalogNotInitializedException implements Exception {
@@ -44,14 +45,50 @@ class SettingsService {
 
   /// 接頭辞と桁数。番号を使い始めた後も変えられ、既存の標本番号は変わらない。
   Future<void> setCatalogFormat({required String prefix, required int digits}) {
-    if (digits < 1) {
-      throw ArgumentError.value(digits, 'digits', '1以上を指定してください');
+    final trimmed = prefix.trim();
+    if (trimmed.isEmpty) {
+      throw ArgumentError.value(prefix, 'prefix', '接頭辞を入力してください');
+    }
+    if (digits < 1 || digits > maxCatalogDigits) {
+      throw ArgumentError.value(digits, 'digits', '1〜$maxCatalogDigitsを指定してください');
     }
     return _db.update(_db.appSettings).write(
       AppSettingsCompanion(
-        catalogPrefix: Value(prefix.trim()),
+        catalogPrefix: Value(trimmed),
         catalogDigits: Value(digits),
       ),
     );
   }
+
+  /// 新しい書式でこれから発行する番号が、既存の標本番号(ごみ箱の中も含む)と
+  /// 同じ文字列になるかを調べる。なるときはその標本番号を、ならなければ null を返す。
+  ///
+  /// 例: `A1`+3桁で作った `A1005` は、`A`+4桁の 1005番と同じ文字列になる。
+  /// そのまま発行すると、保存時に一意制約で失敗する。
+  Future<String?> findFormatConflict({
+    required String prefix,
+    required int digits,
+  }) async {
+    final next = (await read()).nextCatalogNumber ?? 0;
+    final format = CatalogNumberFormat(prefix: prefix.trim(), digits: digits);
+    final texts = await (_db.selectOnly(_db.specimens)
+          ..addColumns([_db.specimens.catalogText]))
+        .map((row) => row.read(_db.specimens.catalogText)!)
+        .get();
+    for (final text in texts) {
+      if (!text.startsWith(format.prefix)) continue;
+      final number = int.tryParse(text.substring(format.prefix.length));
+      if (number == null || number < next) continue;
+      if (format.format(number) == text) return text;
+    }
+    return null;
+  }
+
+  /// バックアップを書き出した日時を記録する。
+  Future<void> markBackedUp(DateTime at) => _db.update(_db.appSettings).write(
+    AppSettingsCompanion(lastBackupAt: Value(at)),
+  );
 }
+
+/// 標本番号の桁数の上限。
+const maxCatalogDigits = 10;
