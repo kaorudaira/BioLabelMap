@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:biolabelmap/core/label/font_text_measurer.dart';
 import 'package:biolabelmap/domain/label/data_label_builder.dart';
 import 'package:biolabelmap/domain/label/data_label_layout.dart';
 import 'package:biolabelmap/domain/models/calendar_date.dart';
@@ -196,9 +201,52 @@ void main() {
     });
   });
 
-  group('仮の幅の見積もり(ApproximateTextMeasurer)で、既定の 15mm ラベル', () {
+  group('同梱フォント(Fira Sans Condensed)の寸法で、既定の 15mm ラベル', () {
+    final fira = FontTextMeasurer(ByteData.sublistView(
+      File('assets/fonts/FiraSansCondensed-Regular.ttf').readAsBytesSync(),
+    ));
+
     DataLabelLayout layoutDefault(DataLabelSource source) =>
-        layoutDataLabel(buildDataLabel(source));
+        layoutDataLabel(buildDataLabel(source), measurer: fira);
+
+    DataLabelSource inPrefecture(String prefectureEn) => DataLabelSource(
+      prefectureEn: prefectureEn,
+      municipalityEn: 'Uonuma-shi',
+      latitude: 36.9447,
+      longitude: 139.2426,
+      period: CollectionPeriod.singleDay(CalendarDate(2026, 6, 20)),
+      collector: 'K. YOSHIHARA',
+    );
+
+    // Fira Sans Condensed の 4pt で、改行する幅(35.72pt)を超える県
+    const longPrefectures = [
+      'Kagoshima-ken', 'Yamanashi-ken', 'Kumamoto-ken', 'Yamaguchi-ken',
+      'Tokushima-ken', 'Fukushima-ken', 'Wakayama-ken', 'Hiroshima-ken',
+    ];
+
+    test('長い県名のときだけ、1行目を1段階(3.5pt)小さくして1行に収める', () {
+      for (final pref in longPrefectures) {
+        final result = layoutDefault(inPrefecture(pref));
+        expect(result.lines.first,
+            PlacedLabelLine('JAPAN: $pref', DataLabelLineRole.header, 3.5), reason: pref);
+        expect(result.headerReduced, isTrue, reason: pref);
+      }
+    });
+
+    test('ほかの県は 4pt のまま', () {
+      final json = jsonDecode(File('assets/data/municipalities.json').readAsStringSync())
+          as Map<String, dynamic>;
+      final others = json.values
+          .map((v) => v['prefEn'] as String)
+          .toSet()
+          .difference(longPrefectures.toSet());
+      expect(others, hasLength(47 - longPrefectures.length));
+      for (final pref in others) {
+        final result = layoutDefault(inPrefecture(pref));
+        expect(result.lines.first.fontSizePt, 4, reason: pref);
+        expect(result.headerReduced, isFalse, reason: pref);
+      }
+    });
 
     test('要件定義の例(魚沼市)は改行せず7行', () {
       final result = layoutDefault(DataLabelSource(
@@ -220,6 +268,31 @@ void main() {
     });
 
     test('郡が付いて長い行は、改行すると8行になるので、詳細住所を小さくして1行に戻す', () {
+      // Nakauonuma-gun, Tsunan-machi: 3pt で 40.6pt(改行)、2.5pt で 33.8pt(1行)
+      final result = layoutDefault(DataLabelSource(
+        prefectureEn: 'Niigata-ken',
+        countyEn: 'Nakauonuma-gun',
+        municipalityEn: 'Tsunan-machi',
+        localityEn: 'Akiyamagō',
+        elevationMeters: 700,
+        latitude: 36.8834,
+        longitude: 138.6205,
+        period: CollectionPeriod.singleDay(CalendarDate(2026, 7, 5)),
+        collector: 'K. YOSHIHARA',
+        countyJa: '中魚沼郡',
+        municipalityJa: '津南町',
+        localityJa: '秋山郷',
+      ));
+      expect(result.detailAddressReduced, isTrue);
+      expect(result.japaneseOmitted, isFalse);
+      expect(result.overflows, isFalse);
+      expect(result.lines, hasLength(7));
+      expect(result.lines[1],
+          const PlacedLabelLine('Nakauonuma-gun, Tsunan-machi', DataLabelLineRole.address, 2.5));
+    });
+
+    test('2.5pt でも郡と市町村が1行に入らないときは、日本語の地名を省く(確認が要る)', () {
+      // Minamiuonuma-gun, Yuzawa-machi: 2.5pt で 36.4pt(改行する幅 35.7pt を超える)
       final result = layoutDefault(DataLabelSource(
         prefectureEn: 'Niigata-ken',
         countyEn: 'Minamiuonuma-gun',
@@ -234,12 +307,17 @@ void main() {
         municipalityJa: '湯沢町',
         localityJa: '土樽',
       ));
-      expect(result.detailAddressReduced, isTrue);
-      expect(result.japaneseOmitted, isFalse);
+      expect(result.japaneseOmitted, isTrue);
       expect(result.overflows, isFalse);
-      expect(result.lines, hasLength(7));
-      expect(result.lines[1],
-          const PlacedLabelLine('Minamiuonuma-gun, Yuzawa-machi', DataLabelLineRole.address, 2.5));
+      expect(result.lines.map((l) => l.text), [
+        'JAPAN: Niigata-ken',
+        'Minamiuonuma-gun,',
+        'Yuzawa-machi',
+        'Tsuchitaru',
+        '(alt. 700 m)',
+        '36.8834°N 138.8205°E',
+        '5. VII. 2026, K. YOSHIHARA',
+      ]);
     });
   });
 }
