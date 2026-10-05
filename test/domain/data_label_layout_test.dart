@@ -5,6 +5,7 @@ import 'package:biolabelmap/domain/models/collection_period.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 1文字 = 文字サイズの 0.5 倍(pt)。改行の動きを数えやすくするためのテスト用。
+/// 3pt の1文字 = 1.5pt、2.5pt = 1.25pt、3.5pt = 1.75pt、4pt = 2pt。
 class _HalfEmMeasurer implements TextMeasurer {
   const _HalfEmMeasurer();
 
@@ -18,18 +19,32 @@ class _HalfEmMeasurer implements TextMeasurer {
 DataLabelLayoutSpec specWrapAt(double wrapPt) =>
     DataLabelLayoutSpec(labelWidthMm: wrapPt / 0.9 / ptPerMm, paddingMm: 0);
 
-/// 改行する幅を「3pt の文字で N 文字ぶん」にする(_HalfEmMeasurer では 3pt の1文字 = 1.5pt)。
+/// 改行する幅を「3pt の文字で N 文字ぶん」にする。
 DataLabelLayoutSpec specFor3ptChars(int chars) => specWrapAt(chars * 1.5 + 0.01);
+
+DataLabelLine japanese(List<String> segments) => DataLabelLine(
+  segments.join(),
+  DataLabelLineRole.japanese,
+  segments: segments,
+);
 
 void main() {
   const measurer = _HalfEmMeasurer();
 
-  DataLabelLayout layout(List<DataLabelLine> lines, DataLabelLayoutSpec spec) =>
-      layoutDataLabel(lines, spec: spec, measurer: measurer);
+  DataLabelLayout layout(
+    List<DataLabelLine> lines,
+    DataLabelLayoutSpec spec, {
+    bool allowOmitJapanese = true,
+  }) => layoutDataLabel(
+    lines,
+    spec: spec,
+    measurer: measurer,
+    allowOmitJapanese: allowOmitJapanese,
+  );
 
   List<String> texts(DataLabelLayout l) => l.lines.map((x) => x.text).toList();
 
-  group('改行', () {
+  group('欧文の改行', () {
     test('幅に収まる行は改行しない', () {
       final result = layout(
         const [DataLabelLine('Uonuma-shi', DataLabelLineRole.address)],
@@ -40,12 +55,12 @@ void main() {
       expect(result.overflows, isFalse);
     });
 
-    test('「, 」の後ろで改行し、行末のカンマは省く', () {
+    test('「, 」の後ろで改行し、行末のカンマは残す', () {
       final result = layout(
         const [DataLabelLine('Minamiuonuma-gun, Yuzawa-machi', DataLabelLineRole.address)],
         specFor3ptChars(20),
       );
-      expect(texts(result), ['Minamiuonuma-gun', 'Yuzawa-machi']);
+      expect(texts(result), ['Minamiuonuma-gun,', 'Yuzawa-machi']);
     });
 
     test('空白より「, 」を優先して切る(日付と採集者を分ける)', () {
@@ -54,7 +69,7 @@ void main() {
         const [DataLabelLine('30. V.-2. VI. 2026, K. YOSHIHARA', DataLabelLineRole.body)],
         specFor3ptChars(22),
       );
-      expect(texts(result), ['30. V.-2. VI. 2026', 'K. YOSHIHARA']);
+      expect(texts(result), ['30. V.-2. VI. 2026,', 'K. YOSHIHARA']);
     });
 
     test('「, 」が無ければ空白で切る(緯度と経度)', () {
@@ -70,53 +85,63 @@ void main() {
         const [DataLabelLine('Higashishirakawa-gun, Yamatsuri-machi', DataLabelLineRole.address)],
         specFor3ptChars(17),
       );
-      expect(texts(result), ['Higashishirakawa-', 'gun', 'Yamatsuri-machi']);
+      expect(texts(result), ['Higashishirakawa-', 'gun,', 'Yamatsuri-machi']);
       expect(result.overflows, isFalse);
     });
+  });
 
-    test('日本語の地名は、郡・市町村・大字の区切りで改行する', () {
-      final result = layout(
-        const [
-          DataLabelLine('南魚沼郡湯沢町土樽', DataLabelLineRole.japanese,
-              segments: ['南魚沼郡', '湯沢町', '土樽']),
-        ],
-        // 3.5pt の1文字 = 1.75pt(_HalfEmMeasurer)。改行幅は 7 文字ぶん
-        specWrapAt(7 * 1.75 + 0.01),
-      );
-      expect(texts(result), ['南魚沼郡湯沢町', '土樽']);
+  group('日本語の地名', () {
+    test('1行に入れば、そのまま', () {
+      final result = layout([japanese(['南魚沼郡', '湯沢町', '土樽'])], specWrapAt(9 * 1.75 + 0.01));
+      expect(texts(result), ['南魚沼郡湯沢町土樽']);
+      expect(result.droppedJapaneseSegments, isEmpty);
     });
 
-    test('区切りの中が長すぎるときは、文字単位で切る', () {
-      final result = layout(
-        const [
-          DataLabelLine('東白川郡矢祭町', DataLabelLineRole.japanese,
-              segments: ['東白川郡', '矢祭町']),
-        ],
-        // 改行幅は 3.5pt の和文 3 文字ぶん
-        specWrapAt(3 * 1.75 + 0.01),
-      );
-      // 長すぎる「東白川郡」だけを文字で切り、「矢祭町」は区切りを保つ
-      expect(texts(result), ['東白川', '郡', '矢祭町']);
+    test('1行に入らなければ、一番大きい行政区画(郡)を省く。改行はしない', () {
+      final result = layout([japanese(['南魚沼郡', '湯沢町', '土樽'])], specWrapAt(7 * 1.75 + 0.01));
+      expect(texts(result), ['湯沢町土樽']);
+      expect(result.droppedJapaneseSegments, ['南魚沼郡']);
+      expect(result.detailAddressReduced, isFalse);
+    });
+
+    test('郡を省いても入らなければ、次に大きい市町村も省く', () {
+      final result = layout([japanese(['南魚沼郡', '湯沢町', '土樽'])], specWrapAt(4 * 1.75 + 0.01));
+      expect(texts(result), ['土樽']);
+      expect(result.droppedJapaneseSegments, ['南魚沼郡', '湯沢町']);
+    });
+
+    test('郡が無い市は、市を省く', () {
+      final result = layout([japanese(['魚沼市', '下折立'])], specWrapAt(4 * 1.75 + 0.01));
+      expect(texts(result), ['下折立']);
+      expect(result.droppedJapaneseSegments, ['魚沼市']);
+    });
+
+    test('最後の1区画も入らないときは、文字を1段階小さくする', () {
+      // 3.5pt では 5文字(8.75pt)が入らず、3pt(7.5pt)なら入る
+      final result = layout([japanese(['魚沼市', '大字下折立'])], specWrapAt(8.0));
+      expect(result.detailAddressReduced, isTrue);
+      expect(result.lines.single, const PlacedLabelLine('大字下折立', DataLabelLineRole.japanese, 3));
+      expect(result.japaneseOmitted, isFalse);
     });
   });
 
   group('7行に収まらないとき', () {
     // 郡と市町村が改行され、全体が8行になる例
-    List<DataLabelLine> eightLinesWhenWrapped() => List.of(const [
-      DataLabelLine('JAPAN: Niigata-ken', DataLabelLineRole.header),
-      DataLabelLine('Minamiuonuma-gun, Yuzawa-machi', DataLabelLineRole.address),
-      DataLabelLine('Tsuchitaru', DataLabelLineRole.address),
-      DataLabelLine('(alt. 700 m)', DataLabelLineRole.body),
-      DataLabelLine('36.8834°N', DataLabelLineRole.body),
-      DataLabelLine('5. VII. 2026', DataLabelLineRole.body),
-      DataLabelLine('南魚沼郡湯沢町土樽', DataLabelLineRole.japanese,
-          segments: ['南魚沼郡', '湯沢町', '土樽']),
+    List<DataLabelLine> eightLinesWhenWrapped() => List.of([
+      const DataLabelLine('JAPAN: Niigata-ken', DataLabelLineRole.header),
+      const DataLabelLine('Minamiuonuma-gun, Yuzawa-machi', DataLabelLineRole.address),
+      const DataLabelLine('Tsuchitaru', DataLabelLineRole.address),
+      const DataLabelLine('(alt. 700 m)', DataLabelLineRole.body),
+      const DataLabelLine('36.8834°N', DataLabelLineRole.body),
+      const DataLabelLine('5. VII. 2026', DataLabelLineRole.body),
+      japanese(['南魚沼郡', '湯沢町', '土樽']),
     ]);
 
     test('詳細住所を1段階小さくして、7行に収める', () {
       // 3pt なら 26 文字、2.5pt なら 31.2 文字まで1行に入る
       final result = layout(eightLinesWhenWrapped(), specFor3ptChars(26));
       expect(result.detailAddressReduced, isTrue);
+      expect(result.japaneseOmitted, isFalse);
       expect(result.overflows, isFalse);
       expect(result.lines, hasLength(7));
       expect(
@@ -134,15 +159,32 @@ void main() {
       final result = layout(lines, specFor3ptChars(26));
       expect(result.detailAddressReduced, isFalse);
       expect(result.lines, hasLength(7));
-      expect(result.lines[1].text, 'Minamiuonuma-gun');
+      expect(result.lines[1].text, 'Minamiuonuma-gun,');
       expect(result.lines[1].fontSizePt, 3);
     });
 
-    test('小さくしても収まらないときは、警告を立てる', () {
-      final result = layout(eightLinesWhenWrapped(), specFor3ptChars(10));
+    test('1段階小さくしても収まらないときは、日本語の地名を省く(確認が要る)', () {
+      // 2.5pt でも郡と市町村が2行に分かれ(37.5pt > 36pt)、8行になる。1行目は入る(36pt)
+      final result = layout(eightLinesWhenWrapped(), specFor3ptChars(24));
       expect(result.detailAddressReduced, isTrue);
+      expect(result.japaneseOmitted, isTrue);
+      expect(result.overflows, isFalse);
+      expect(result.lines, hasLength(7));
+      expect(result.lines.any((l) => l.role == DataLabelLineRole.japanese), isFalse);
+    });
+
+    test('省くことを断られたら、日本語の地名を残して警告を立てる', () {
+      final result = layout(eightLinesWhenWrapped(), specFor3ptChars(24),
+          allowOmitJapanese: false);
+      expect(result.japaneseOmitted, isFalse);
       expect(result.overflows, isTrue);
-      expect(result.lines.length, greaterThan(7));
+      expect(result.lines.last.role, DataLabelLineRole.japanese);
+    });
+
+    test('日本語の地名を省いても収まらないなら、省かずに警告を立てる', () {
+      final result = layout(eightLinesWhenWrapped(), specFor3ptChars(10));
+      expect(result.japaneseOmitted, isFalse);
+      expect(result.overflows, isTrue);
     });
 
     test('切れない長い語が枠からはみ出すときも、警告を立てる', () {
@@ -173,6 +215,7 @@ void main() {
       ));
       expect(result.lines, hasLength(7));
       expect(result.detailAddressReduced, isFalse);
+      expect(result.japaneseOmitted, isFalse);
       expect(result.overflows, isFalse);
     });
 
@@ -192,6 +235,7 @@ void main() {
         localityJa: '土樽',
       ));
       expect(result.detailAddressReduced, isTrue);
+      expect(result.japaneseOmitted, isFalse);
       expect(result.overflows, isFalse);
       expect(result.lines, hasLength(7));
       expect(result.lines[1],

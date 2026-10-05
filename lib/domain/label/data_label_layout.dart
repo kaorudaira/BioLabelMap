@@ -101,6 +101,8 @@ class DataLabelLayout {
   const DataLabelLayout({
     required this.lines,
     required this.detailAddressReduced,
+    required this.droppedJapaneseSegments,
+    required this.japaneseOmitted,
     required this.overflows,
   });
 
@@ -109,77 +111,110 @@ class DataLabelLayout {
   /// 7行に収めるため、詳細住所の文字を1段階小さくしたか。
   final bool detailAddressReduced;
 
-  /// 小さくしても収まらない(行数が多すぎる、または枠より長い語がある)。
-  /// プレビューで警告する(要件定義 S-07)。
+  /// 日本語の地名を1行に収めるため省いた行政区画(大きい順。例: `['南魚沼郡']`)。
+  final List<String> droppedJapaneseSegments;
+
+  /// 1段階小さくしても収まらないため、日本語の地名を省いたか。
+  /// 印刷の前に警告し、省いてよいか確認する(要件定義 S-07)。
+  final bool japaneseOmitted;
+
+  /// 収まらない(行数が多すぎる、または枠より長い語がある)。プレビューで警告する。
   final bool overflows;
 }
 
-/// データラベルを割り付ける(改行と文字サイズの決定)。
+/// データラベルを割り付ける(改行と文字サイズの決定)。要件定義 第5章。
 ///
-/// 1. 各行を、余裕をもった幅([DataLabelLayoutSpec.wrapWidthPt])で改行する。
-///    区切りは「, 」を優先し、次に空白、最後にハイフンの後ろで切る。行末のカンマは省く。
-/// 2. それで [DataLabelLayoutSpec.maxLines] 行を超えたら、詳細住所(郡と市町村・大字・
-///    日本語の地名)の文字を1段階小さくして、もう一度改行する。
-/// 3. それでも超えるときは、小さくした割り付けを返し、[DataLabelLayout.overflows] を立てる。
+/// 1. 欧文の行は、余裕をもった幅([DataLabelLayoutSpec.wrapWidthPt])で改行する。
+///    区切りは「, 」を優先し、次に空白、最後にハイフンの後ろ。行末のカンマは残す。
+/// 2. 日本語の地名は改行しない。1行に入らなければ、大きい行政区画(郡 → 市町村)から省いて収める。
+/// 3. それで [DataLabelLayoutSpec.maxLines] 行を超える、または日本語の地名が入らないときは、
+///    詳細住所(郡と市町村・大字・日本語の地名)の文字を1段階小さくして、1〜2をやり直す。
+/// 4. それでも収まらないときは、日本語の地名を省く([DataLabelLayout.japaneseOmitted])。
+///    省いても収まらないとき、または [allowOmitJapanese] が false(省くことを断られた)ときは、
+///    省かずに [DataLabelLayout.overflows] を立てる。
 DataLabelLayout layoutDataLabel(
   List<DataLabelLine> lines, {
   DataLabelStyle style = const DataLabelStyle(),
   DataLabelLayoutSpec spec = const DataLabelLayoutSpec(),
   TextMeasurer measurer = const ApproximateTextMeasurer(),
+  bool allowOmitJapanese = true,
 }) {
-  final normal = _place(lines, style, spec, measurer);
-  if (normal.length <= spec.maxLines) {
-    return DataLabelLayout(
-      lines: normal,
-      detailAddressReduced: false,
-      overflows: _anyTooWide(normal, spec, measurer),
-    );
-  }
+  final normal = _Attempt(lines, style, spec, measurer);
+  if (normal.fits) return normal.toLayout(reduced: false);
 
-  final reduced = _place(lines, style.withReducedDetailAddress(), spec, measurer);
-  return DataLabelLayout(
-    lines: reduced,
-    detailAddressReduced: true,
-    overflows:
-        reduced.length > spec.maxLines || _anyTooWide(reduced, spec, measurer),
+  final reducedStyle = style.withReducedDetailAddress();
+  final reduced = _Attempt(lines, reducedStyle, spec, measurer);
+  if (reduced.fits || !allowOmitJapanese) return reduced.toLayout(reduced: true);
+
+  final hasJapanese = lines.any((l) => l.role == DataLabelLineRole.japanese);
+  final withoutJapanese = _Attempt(
+    [for (final l in lines) if (l.role != DataLabelLineRole.japanese) l],
+    reducedStyle,
+    spec,
+    measurer,
   );
+  // 省いても収まらない(長すぎる語があるなど)なら、省かずに警告だけ出す
+  if (!hasJapanese || !withoutJapanese.fits) return reduced.toLayout(reduced: true);
+  return withoutJapanese.toLayout(reduced: true, japaneseOmitted: true);
 }
 
-List<PlacedLabelLine> _place(
-  List<DataLabelLine> lines,
-  DataLabelStyle style,
-  DataLabelLayoutSpec spec,
-  TextMeasurer measurer,
-) => [
-  for (final line in lines)
-    for (final text in _wrapLine(line, style.sizeOf(line.role), spec, measurer))
-      PlacedLabelLine(text, line.role, style.sizeOf(line.role)),
-];
-// ↑ コレクション for の入れ子。Java なら2重ループで add するところ。
+/// 1つの文字サイズで割り付けた結果。
+class _Attempt {
+  _Attempt(
+    List<DataLabelLine> lines,
+    DataLabelStyle style,
+    this.spec,
+    this.measurer,
+  ) {
+    for (final line in lines) {
+      final size = style.sizeOf(line.role);
+      bool fits(String s) => measurer.widthOf(s, size) <= spec.wrapWidthPt;
 
-bool _anyTooWide(
-  List<PlacedLabelLine> lines,
-  DataLabelLayoutSpec spec,
-  TextMeasurer measurer,
-) => lines.any(
-  (l) => measurer.widthOf(l.text, l.fontSizePt) > spec.contentWidthPt,
-);
+      if (line.role == DataLabelLineRole.japanese) {
+        final segments = line.segments;
+        // 大きい行政区画から省き、1行に入る最長のものを使う(最後の1区画は残す)
+        var start = 0;
+        while (start < segments.length - 1 && !fits(segments.sublist(start).join())) {
+          start++;
+        }
+        final text = segments.sublist(start).join();
+        dropped.addAll(segments.sublist(0, start));
+        if (!fits(text)) japaneseDoesNotFit = true;
+        placed.add(PlacedLabelLine(text, line.role, size));
+      } else {
+        for (final text in fits(line.text) ? [line.text] : _wrapLatin(line.text, fits)) {
+          placed.add(PlacedLabelLine(text, line.role, size));
+        }
+      }
+    }
+  }
 
-List<String> _wrapLine(
-  DataLabelLine line,
-  double sizePt,
-  DataLabelLayoutSpec spec,
-  TextMeasurer measurer,
-) {
-  bool fits(String s) => measurer.widthOf(s, sizePt) <= spec.wrapWidthPt;
+  final DataLabelLayoutSpec spec;
+  final TextMeasurer measurer;
+  final placed = <PlacedLabelLine>[];
+  final dropped = <String>[];
+  var japaneseDoesNotFit = false;
 
-  if (fits(line.text)) return [line.text];
-  return line.role == DataLabelLineRole.japanese
-      ? _wrapJapanese(line.segments, fits)
-      : _wrapLatin(line.text, fits);
+  bool get tooManyLines => placed.length > spec.maxLines;
+
+  bool get anyTooWide => placed.any(
+    (l) => measurer.widthOf(l.text, l.fontSizePt) > spec.contentWidthPt,
+  );
+
+  bool get fits => !tooManyLines && !japaneseDoesNotFit && !anyTooWide;
+
+  DataLabelLayout toLayout({required bool reduced, bool japaneseOmitted = false}) =>
+      DataLabelLayout(
+        lines: placed,
+        detailAddressReduced: reduced,
+        droppedJapaneseSegments: dropped,
+        japaneseOmitted: japaneseOmitted,
+        overflows: !fits,
+      );
 }
 
 /// 欧文の改行。語(空白区切り)を詰めていき、入らなくなったら「, 」の後ろを優先して切る。
+/// 行末のカンマは残す(`Minamiuonuma-gun,` / `Yuzawa-machi`)。
 List<String> _wrapLatin(String text, bool Function(String) fits) {
   final words = [
     for (final word in text.split(' '))
@@ -207,9 +242,7 @@ List<String> _wrapLatin(String text, bool Function(String) fits) {
     }
   }
   if (current.isNotEmpty) result.add(current.join(' '));
-
-  // 行末のカンマは省く
-  return [for (final l in result) l.endsWith(',') ? l.substring(0, l.length - 1) : l];
+  return result;
 }
 
 /// 1語で幅を超えるときは、ハイフンの後ろで切る(`Higashishirakawa-` / `gun,`)。
@@ -222,28 +255,4 @@ List<String> _splitLongWord(String word, bool Function(String) fits) {
     if (fits(head)) return [head, ..._splitLongWord(word.substring(i + 1), fits)];
   }
   return [word];
-}
-
-/// 日本語の地名の改行。郡・市町村・大字の区切りを優先し、それでも長ければ文字単位で切る。
-List<String> _wrapJapanese(List<String> segments, bool Function(String) fits) {
-  final result = <String>[];
-  var current = '';
-  for (final segment in segments) {
-    if (fits(current + segment)) {
-      current += segment;
-      continue;
-    }
-    if (current.isNotEmpty) result.add(current);
-    current = '';
-    // runes で1文字ずつ(サロゲートペアの漢字を割らないため。Java の codePoints() に相当)
-    for (final char in segment.runes.map(String.fromCharCode)) {
-      if (current.isNotEmpty && !fits(current + char)) {
-        result.add(current);
-        current = '';
-      }
-      current += char;
-    }
-  }
-  if (current.isNotEmpty) result.add(current);
-  return result;
 }
