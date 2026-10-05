@@ -31,6 +31,16 @@ void main() {
     expect(directory.lookup('28100')!.municipalityEn, 'Kōbe-shi');
   });
 
+  test('要確認は残っていない(overrides.json で確定済み)', () {
+    final source = File('assets/data/municipalities.json').readAsStringSync();
+    expect(source.contains('"unverified"'), isFalse);
+  });
+
+  test('ン(b・m・p の前)は日本郵便に従って m', () {
+    expect(directory.lookup('10201')!.prefectureEn, 'Gumma-ken');
+    expect(directory.lookup('44212')!.municipalityEn, 'Bungoōno-shi');
+  });
+
   test('町村は郡を分けて持つ', () {
     final yuzawa = directory.lookup('15461')!;
     expect(yuzawa.municipalityEn, 'Yuzawa-machi');

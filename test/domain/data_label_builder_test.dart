@@ -42,6 +42,34 @@ void main() {
       );
     });
 
+    test('郡は市町村と同じ行に入れ、7行のまま', () {
+      final lines = buildDataLabel(DataLabelSource(
+        prefectureEn: 'Niigata-ken',
+        countyEn: 'Minamiuonuma-gun',
+        municipalityEn: 'Yuzawa-machi',
+        localityEn: 'Tsuchitaru',
+        elevationMeters: 700,
+        latitude: 36.8834,
+        longitude: 138.8205,
+        period: CollectionPeriod.singleDay(CalendarDate(2026, 7, 5)),
+        collector: 'K. YOSHIHARA',
+        countyJa: '南魚沼郡',
+        municipalityJa: '湯沢町',
+        localityJa: '土樽',
+      ));
+      expect(lines, hasLength(7));
+      expect(lines[1], const DataLabelLine(
+          'Minamiuonuma-gun, Yuzawa-machi', DataLabelLineRole.body));
+      expect(lines.last, const DataLabelLine(
+          '南魚沼郡湯沢町土樽', DataLabelLineRole.japanese));
+      expect(
+        dataLabelAsSingleLine(lines),
+        'JAPAN: Niigata-ken, Minamiuonuma-gun, Yuzawa-machi, Tsuchitaru, '
+        '(alt. 700 m), 36.8834°N 138.8205°E, 5. VII. 2026, K. YOSHIHARA, '
+        '南魚沼郡湯沢町土樽',
+      );
+    });
+
     test('標高・地名が補完待ち(null)なら行ごと省き、空欄を残さない', () {
       final lines = buildDataLabel(DataLabelSource(
         latitude: 36.9447,

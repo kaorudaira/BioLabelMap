@@ -7,7 +7,7 @@ enum DataLabelLineRole {
   /// 1行目(`JAPAN: 県`)。
   header,
 
-  /// 2〜6行目(市町村・大字・標高・緯度経度・日付と採集者)。
+  /// 2〜6行目(郡と市町村・大字・標高・緯度経度・日付と採集者)。
   body,
 
   /// 7行目(日本語の地名)。
@@ -61,6 +61,7 @@ class DataLabelSource {
   const DataLabelSource({
     this.country = 'JAPAN',
     this.prefectureEn,
+    this.countyEn,
     this.municipalityEn,
     this.localityEn,
     this.elevationMeters,
@@ -68,6 +69,7 @@ class DataLabelSource {
     required this.longitude,
     required this.period,
     this.collector,
+    this.countyJa,
     this.municipalityJa,
     this.localityJa,
   });
@@ -76,6 +78,9 @@ class DataLabelSource {
   // `String?` は null を許す型。`String` は null にできない(コンパイラが検査する)。
   // Java の @Nullable / Optional を型システムで強制するイメージ。
   final String? prefectureEn;
+
+  /// 郡(町村のみ)。市町村と同じ行に `Minamiuonuma-gun, Yuzawa-machi` の形で入る。
+  final String? countyEn;
   final String? municipalityEn;
   final String? localityEn;
   final int? elevationMeters;
@@ -85,6 +90,7 @@ class DataLabelSource {
 
   /// ラベル用に整形済みの採集者名(`K. YOSHIHARA`)。
   final String? collector;
+  final String? countyJa;
   final String? municipalityJa;
   final String? localityJa;
 }
@@ -92,12 +98,20 @@ class DataLabelSource {
 /// データラベルの行を組み立てる(要件定義 第5章)。
 ///
 /// 項目ごとに改行し、最大7行で構成する。行末のカンマは付けない。
+/// 郡は市町村と同じ行に入れ、行数を増やさない(10mm の高さに収めるため)。
 /// 未取得・空の項目は行ごと省き、空欄を残さない。
 List<DataLabelLine> buildDataLabel(DataLabelSource s) {
   final prefecture = _blankToNull(s.prefectureEn);
-  final municipalityJa = _blankToNull(s.municipalityJa) ?? '';
-  final localityJa = _blankToNull(s.localityJa) ?? '';
-  final japanese = '$municipalityJa$localityJa';
+  final municipality = [
+    ?_blankToNull(s.countyEn),
+    ?_blankToNull(s.municipalityEn),
+  ].join(', ');
+  // ↑ `?式` は null なら要素を入れない(Dart 3.8 の null-aware 要素)。
+  final japanese = [
+    ?_blankToNull(s.countyJa),
+    ?_blankToNull(s.municipalityJa),
+    ?_blankToNull(s.localityJa),
+  ].join();
   final collector = _blankToNull(s.collector);
   final date = formatLabelPeriod(s.period);
 
@@ -108,8 +122,8 @@ List<DataLabelLine> buildDataLabel(DataLabelSource s) {
       prefecture == null ? s.country : '${s.country}: $prefecture',
       DataLabelLineRole.header,
     ),
-    if (_blankToNull(s.municipalityEn) case final m?)
-      DataLabelLine(m, DataLabelLineRole.body),
+    if (municipality.isNotEmpty)
+      DataLabelLine(municipality, DataLabelLineRole.body),
     if (_blankToNull(s.localityEn) case final l?)
       DataLabelLine(l, DataLabelLineRole.body),
     if (s.elevationMeters case final e?)

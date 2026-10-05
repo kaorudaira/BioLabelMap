@@ -37,11 +37,15 @@ class Localities extends Table {
   /// 自治体コード(逆ジオコーダの muniCd)。県・市町村の英語名の変換に使う。
   TextColumn get municipalityCode => text().nullable()();
   TextColumn get prefectureJa => text().nullable()();
+
+  /// 郡(町村のみ)。
+  TextColumn get countyJa => text().nullable()();
   TextColumn get municipalityJa => text().nullable()();
 
   /// 大字(逆ジオコーダの lv01Nm)。
   TextColumn get localityJa => text().nullable()();
   TextColumn get prefectureEn => text().nullable()();
+  TextColumn get countyEn => text().nullable()();
   TextColumn get municipalityEn => text().nullable()();
 
   /// 大字のローマ字。手入力し、辞書で補完する。
