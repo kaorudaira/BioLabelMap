@@ -15,12 +15,25 @@ abstract interface class TextMeasurer {
 class DataLabelLayoutSpec {
   const DataLabelLayoutSpec({
     this.labelWidthMm = 15,
+    this.labelHeightMm = 10,
     this.paddingMm = 0.5,
+    this.verticalPaddingMm = 0.4,
+    this.lineHeightFactor = 1.1,
     this.safetyRatio = 0.9,
     this.maxLines = 7,
   });
 
   final double labelWidthMm;
+  final double labelHeightMm;
+
+  /// 上下それぞれの余白。
+  final double verticalPaddingMm;
+
+  /// 行の高さ(文字サイズに対する倍率)。
+  final double lineHeightFactor;
+
+  /// 文字を置ける高さ(pt)。行の高さの合計がこれを超えると、枠からはみ出す。
+  double get contentHeightPt => (labelHeightMm - verticalPaddingMm * 2) * ptPerMm;
 
   /// 左右それぞれの余白。
   final double paddingMm;
@@ -200,7 +213,13 @@ class _Attempt {
     (l) => measurer.widthOf(l.text, l.fontSizePt) > spec.contentWidthPt,
   );
 
-  bool get fits => !tooManyLines && !japaneseDoesNotFit && !anyTooWide;
+  /// 行の高さの合計が、ラベルの高さを超える。
+  bool get tooTall =>
+      placed.fold(0.0, (sum, l) => sum + l.fontSizePt * spec.lineHeightFactor) >
+      spec.contentHeightPt;
+  // ↑ fold は Java の Stream.reduce(初期値, 関数) に相当する
+
+  bool get fits => !tooManyLines && !tooTall && !japaneseDoesNotFit && !anyTooWide;
 
   DataLabelLayout toLayout({required bool reduced, bool japaneseOmitted = false}) =>
       DataLabelLayout(
