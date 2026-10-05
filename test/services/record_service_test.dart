@@ -148,10 +148,11 @@ void main() {
       expect(locality.accuracyMeters, isNull);
     });
 
-    test('小数4桁が同じ位置は、同じ地点を使う', () async {
+    test('切り捨てて小数4桁が同じ位置は、同じ地点を使う', () async {
+      // 既定の位置は 36.94471, 139.24258 → 36.9447, 139.2425
       final first = await records.save(input());
       final second = await records.save(input(
-        position: const NewPosition(latitude: 36.94469, longitude: 139.24262),
+        position: const NewPosition(latitude: 36.94479, longitude: 139.24251),
       ));
       expect(second.localityId, first.localityId);
       expect(await db.select(db.localities).get(), hasLength(1));
