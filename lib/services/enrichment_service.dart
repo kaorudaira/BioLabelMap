@@ -4,6 +4,7 @@ import '../core/db/database.dart';
 import '../core/gsi/gsi_api.dart';
 import '../core/gsi/municipality_directory.dart';
 import '../domain/status.dart';
+import 'locality_lookup_service.dart';
 
 /// 補完を1回実行した結果。
 class EnrichmentRunSummary {
@@ -168,31 +169,23 @@ class EnrichmentService {
     Locality locality,
     GsiAddress address,
   ) async {
-    final names = _directory.lookup(address.municipalityCode);
-
-    // 大字のローマ字がまだ無ければ、辞書から補う
-    var localityEn = locality.localityEn;
-    if (localityEn == null && address.localityJa != null) {
-      final entry = await (_db.select(_db.placeRomajiDict)
-            ..where(
-              (d) =>
-                  d.municipalityCode.equals(address.municipalityCode) &
-                  d.localityJa.equals(address.localityJa!),
-            ))
-          .getSingleOrNull();
-      localityEn = entry?.localityEn;
-    }
-
+    // 大字のローマ字は、手入力済みならそれを残し、無ければ辞書から補う
+    final place = await buildPlaceInfo(
+      _db,
+      _directory,
+      address,
+      currentLocalityEn: locality.localityEn,
+    );
     return LocalitiesCompanion(
-      municipalityCode: Value(address.municipalityCode),
-      prefectureJa: Value(names?.prefectureJa),
-      countyJa: Value(names?.countyJa),
-      municipalityJa: Value(names?.municipalityJa),
-      localityJa: Value(address.localityJa),
-      prefectureEn: Value(names?.prefectureEn),
-      countyEn: Value(names?.countyEn),
-      municipalityEn: Value(names?.municipalityEn),
-      localityEn: Value(localityEn),
+      municipalityCode: Value(place.municipalityCode),
+      prefectureJa: Value(place.prefectureJa),
+      countyJa: Value(place.countyJa),
+      municipalityJa: Value(place.municipalityJa),
+      localityJa: Value(place.localityJa),
+      prefectureEn: Value(place.prefectureEn),
+      countyEn: Value(place.countyEn),
+      municipalityEn: Value(place.municipalityEn),
+      localityEn: Value(place.localityEn),
       placeStatus: const Value(FetchStatus.fetched),
     );
   }

@@ -1,11 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import '../core/db/database.dart';
 import '../core/db/database_provider.dart';
 import '../core/gsi/gsi_api.dart';
 import '../core/gsi/municipality_directory.dart';
 import 'draft_service.dart';
 import 'enrichment_service.dart';
+import 'locality_lookup_service.dart';
+import 'map_query_service.dart';
 import 'record_service.dart';
 import 'settings_service.dart';
 
@@ -24,6 +29,10 @@ final draftServiceProvider = Provider(
   (ref) => DraftService(ref.watch(databaseProvider)),
 );
 
+final mapQueryServiceProvider = Provider(
+  (ref) => MapQueryService(ref.watch(databaseProvider)),
+);
+
 final gsiApiProvider = Provider((ref) {
   final client = http.Client();
   ref.onDispose(client.close);
@@ -35,6 +44,14 @@ final municipalityDirectoryProvider = Provider<MunicipalityDirectory>(
   (ref) => throw UnimplementedError('起動時に override してください'),
 );
 
+final localityLookupServiceProvider = Provider(
+  (ref) => LocalityLookupService(
+    ref.watch(databaseProvider),
+    ref.watch(gsiApiProvider),
+    ref.watch(municipalityDirectoryProvider),
+  ),
+);
+
 final enrichmentServiceProvider = Provider(
   (ref) => EnrichmentService(
     ref.watch(databaseProvider),
@@ -42,3 +59,56 @@ final enrichmentServiceProvider = Provider(
     ref.watch(municipalityDirectoryProvider),
   ),
 );
+
+// ---- 画面が監視する値(StreamProvider は DB が変わるたびに新しい値を流す) ----
+
+final settingsProvider = StreamProvider<AppSettingsRow>(
+  (ref) => ref.watch(settingsServiceProvider).watch(),
+);
+
+final pendingLocalityCountProvider = StreamProvider<int>(
+  (ref) => ref.watch(enrichmentServiceProvider).watchPendingLocalityCount(),
+);
+
+final draftsProvider = StreamProvider<List<Draft>>(
+  (ref) => ref.watch(draftServiceProvider).watchAll(),
+);
+
+final localityPinsProvider = StreamProvider<List<LocalityPin>>(
+  (ref) => ref.watch(mapQueryServiceProvider).watchPins(),
+);
+
+/// 補完キューを動かすきっかけを管理する(要件定義 第13章)。
+///
+/// - アプリを開いた・前面に戻った・「今すぐ補完」・記録を保存した: [trigger]
+/// - 通信エラー後の再試行(1分後・5分後・30分後): 予約時刻にタイマーで実行
+class EnrichmentScheduler {
+  EnrichmentScheduler(this._service);
+
+  final EnrichmentService _service;
+  Timer? _timer;
+
+  Future<EnrichmentRunSummary> trigger() => _runAndReschedule(triggered: true);
+
+  Future<EnrichmentRunSummary> _runAndReschedule({required bool triggered}) async {
+    _timer?.cancel();
+    final summary = await _service.run(triggered: triggered);
+    final next = await _service.nextScheduledAttempt();
+    if (next != null) {
+      final delay = next.difference(DateTime.now());
+      _timer = Timer(
+        delay.isNegative ? Duration.zero : delay,
+        () => _runAndReschedule(triggered: false),
+      );
+    }
+    return summary;
+  }
+
+  void dispose() => _timer?.cancel();
+}
+
+final enrichmentSchedulerProvider = Provider((ref) {
+  final scheduler = EnrichmentScheduler(ref.watch(enrichmentServiceProvider));
+  ref.onDispose(scheduler.dispose);
+  return scheduler;
+});

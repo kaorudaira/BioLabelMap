@@ -28,4 +28,17 @@ class PlaceInfo {
 
   /// 大字のローマ字(手入力または辞書から)。
   final String? localityEn;
+
+  /// 大字のローマ字だけを変えた写しを作る(記録画面での手入力用)。
+  PlaceInfo withLocalityEn(String? value) => PlaceInfo(
+    municipalityCode: municipalityCode,
+    prefectureJa: prefectureJa,
+    countyJa: countyJa,
+    municipalityJa: municipalityJa,
+    localityJa: localityJa,
+    prefectureEn: prefectureEn,
+    countyEn: countyEn,
+    municipalityEn: municipalityEn,
+    localityEn: value,
+  );
 }
