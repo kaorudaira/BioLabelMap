@@ -234,9 +234,12 @@ void main() {
   });
 
   group('同梱フォント(Fira Sans Condensed)の寸法で、既定の 15mm ラベル', () {
-    final fira = FontTextMeasurer(ByteData.sublistView(
-      File('assets/fonts/FiraSansCondensed-Regular.ttf').readAsBytesSync(),
-    ));
+    ByteData font(String name) =>
+        ByteData.sublistView(File('assets/fonts/$name').readAsBytesSync());
+    final fira = FontTextMeasurer(
+      latinFont: font('FiraSansCondensed-Regular.ttf'),
+      japaneseFont: font('BIZUDPGothic-Regular.ttf'),
+    );
 
     DataLabelLayout layoutDefault(DataLabelSource source) =>
         layoutDataLabel(buildDataLabel(source), measurer: fira);
