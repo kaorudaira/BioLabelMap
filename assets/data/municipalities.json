@@ -514,7 +514,7 @@
   "muniJa": "泊村",
   "prefEn": "Hokkaidō",
   "muniEn": "Tomari-mura",
-  "gunEn": "Furū-gun",
+  "gunEn": "Furuu-gun",
   "gunJa": "古宇郡"
  },
  "01404": {
@@ -522,7 +522,7 @@
   "muniJa": "神恵内村",
   "prefEn": "Hokkaidō",
   "muniEn": "Kamoenai-mura",
-  "gunEn": "Furū-gun",
+  "gunEn": "Furuu-gun",
   "gunJa": "古宇郡"
  },
  "01405": {
@@ -1041,7 +1041,7 @@
   "prefJa": "北海道",
   "muniJa": "滝上町",
   "prefEn": "Hokkaidō",
-  "muniEn": "Takinōe-chō",
+  "muniEn": "Takinoue-chō",
   "gunEn": "Mombetsu-gun",
   "gunJa": "紋別郡"
  },
@@ -1081,7 +1081,7 @@
   "prefJa": "北海道",
   "muniJa": "豊浦町",
   "prefEn": "Hokkaidō",
-  "muniEn": "Toyōra-chō",
+  "muniEn": "Toyoura-chō",
   "gunEn": "Abuta-gun",
   "gunJa": "虻田郡"
  },
@@ -1266,15 +1266,15 @@
   "muniJa": "大樹町",
   "prefEn": "Hokkaidō",
   "muniEn": "Taiki-chō",
-  "gunEn": "Hirō-gun",
+  "gunEn": "Hiroo-gun",
   "gunJa": "広尾郡"
  },
  "01642": {
   "prefJa": "北海道",
   "muniJa": "広尾町",
   "prefEn": "Hokkaidō",
-  "muniEn": "Hirō-chō",
-  "gunEn": "Hirō-gun",
+  "muniEn": "Hiroo-chō",
+  "gunEn": "Hiroo-gun",
   "gunJa": "広尾郡"
  },
  "01643": {
@@ -2797,7 +2797,7 @@
   "prefJa": "福島県",
   "muniJa": "桑折町",
   "prefEn": "Fukushima-ken",
-  "muniEn": "Kōri-machi",
+  "muniEn": "Koori-machi",
   "gunEn": "Date-gun",
   "gunJa": "伊達郡"
  },
@@ -3495,7 +3495,7 @@
   "prefJa": "栃木県",
   "muniJa": "真岡市",
   "prefEn": "Tochigi-ken",
-  "muniEn": "Mōka-shi"
+  "muniEn": "Mooka-shi"
  },
  "09210": {
   "prefJa": "栃木県",
@@ -4491,7 +4491,7 @@
   "prefJa": "千葉県",
   "muniJa": "勝浦市",
   "prefEn": "Chiba-ken",
-  "muniEn": "Katsūra-shi"
+  "muniEn": "Katsuura-shi"
  },
  "12219": {
   "prefJa": "千葉県",
@@ -6433,7 +6433,7 @@
   "prefJa": "長野県",
   "muniJa": "小海町",
   "prefEn": "Nagano-ken",
-  "muniEn": "Kōmi-machi",
+  "muniEn": "Koumi-machi",
   "gunEn": "Minamisaku-gun",
   "gunJa": "南佐久郡"
  },
@@ -6681,7 +6681,7 @@
   "prefJa": "長野県",
   "muniJa": "豊丘村",
   "prefEn": "Nagano-ken",
-  "muniEn": "Toyōka-mura",
+  "muniEn": "Toyooka-mura",
   "gunEn": "Shimoina-gun",
   "gunJa": "下伊那郡"
  },
@@ -6841,7 +6841,7 @@
   "prefJa": "長野県",
   "muniJa": "山ノ内町",
   "prefEn": "Nagano-ken",
-  "muniEn": "Yamanōchi-machi",
+  "muniEn": "Yamanouchi-machi",
   "gunEn": "Shimotakai-gun",
   "gunJa": "下高井郡"
  },
@@ -7071,7 +7071,7 @@
   "prefJa": "岐阜県",
   "muniJa": "輪之内町",
   "prefEn": "Gifu-ken",
-  "muniEn": "Wanōchi-chō",
+  "muniEn": "Wanouchi-chō",
   "gunEn": "Ampachi-gun",
   "gunJa": "安八郡"
  },
@@ -8793,7 +8793,7 @@
   "prefJa": "大阪府",
   "muniJa": "箕面市",
   "prefEn": "Ōsaka-fu",
-  "muniEn": "Minō-shi"
+  "muniEn": "Minoo-shi"
  },
  "27221": {
   "prefJa": "大阪府",
@@ -9059,7 +9059,7 @@
   "prefJa": "兵庫県",
   "muniJa": "豊岡市",
   "prefEn": "Hyōgo-ken",
-  "muniEn": "Toyōka-shi"
+  "muniEn": "Toyooka-shi"
  },
  "28210": {
   "prefJa": "兵庫県",
@@ -9745,7 +9745,7 @@
   "prefJa": "和歌山県",
   "muniJa": "那智勝浦町",
   "prefEn": "Wakayama-ken",
-  "muniEn": "Nachikatsūra-chō",
+  "muniEn": "Nachikatsuura-chō",
   "gunEn": "Higashimuro-gun",
   "gunJa": "東牟婁郡"
  },
@@ -9857,7 +9857,7 @@
   "prefJa": "鳥取県",
   "muniJa": "琴浦町",
   "prefEn": "Tottori-ken",
-  "muniEn": "Kotōra-chō",
+  "muniEn": "Kotoura-chō",
   "gunEn": "Tōhaku-gun",
   "gunJa": "東伯郡"
  },
@@ -10149,7 +10149,7 @@
   "prefJa": "岡山県",
   "muniJa": "瀬戸内市",
   "prefEn": "Okayama-ken",
-  "muniEn": "Setōchi-shi"
+  "muniEn": "Setouchi-shi"
  },
  "33213": {
   "prefJa": "岡山県",
@@ -10653,8 +10653,8 @@
   "prefJa": "徳島県",
   "muniJa": "勝浦町",
   "prefEn": "Tokushima-ken",
-  "muniEn": "Katsūra-chō",
-  "gunEn": "Katsūra-gun",
+  "muniEn": "Katsuura-chō",
+  "gunEn": "Katsuura-gun",
   "gunJa": "勝浦郡"
  },
  "36302": {
@@ -10662,7 +10662,7 @@
   "muniJa": "上勝町",
   "prefEn": "Tokushima-ken",
   "muniEn": "Kamikatsu-chō",
-  "gunEn": "Katsūra-gun",
+  "gunEn": "Katsuura-gun",
   "gunJa": "勝浦郡"
  },
  "36321": {
@@ -11886,7 +11886,7 @@
   "muniJa": "玄海町",
   "prefEn": "Saga-ken",
   "muniEn": "Genkai-chō",
-  "gunEn": "Higashimatsūra-gun",
+  "gunEn": "Higashimatsuura-gun",
   "gunJa": "東松浦郡"
  },
  "41401": {
@@ -11894,7 +11894,7 @@
   "muniJa": "有田町",
   "prefEn": "Saga-ken",
   "muniEn": "Arita-chō",
-  "gunEn": "Nishimatsūra-gun",
+  "gunEn": "Nishimatsuura-gun",
   "gunJa": "西松浦郡"
  },
  "41423": {
@@ -11969,7 +11969,7 @@
   "prefJa": "長崎県",
   "muniJa": "松浦市",
   "prefEn": "Nagasaki-ken",
-  "muniEn": "Matsūra-shi"
+  "muniEn": "Matsuura-shi"
  },
  "42209": {
   "prefJa": "長崎県",
@@ -12052,7 +12052,7 @@
   "muniJa": "小値賀町",
   "prefEn": "Nagasaki-ken",
   "muniEn": "Ojika-chō",
-  "gunEn": "Kitamatsūra-gun",
+  "gunEn": "Kitamatsuura-gun",
   "gunJa": "北松浦郡"
  },
  "42391": {
@@ -12060,7 +12060,7 @@
   "muniJa": "佐々町",
   "prefEn": "Nagasaki-ken",
   "muniEn": "Saza-chō",
-  "gunEn": "Kitamatsūra-gun",
+  "gunEn": "Kitamatsuura-gun",
   "gunJa": "北松浦郡"
  },
  "42411": {
@@ -12068,7 +12068,7 @@
   "muniJa": "新上五島町",
   "prefEn": "Nagasaki-ken",
   "muniEn": "Shinkamigotō-chō",
-  "gunEn": "Minamimatsūra-gun",
+  "gunEn": "Minamimatsuura-gun",
   "gunJa": "南松浦郡"
  },
  "43100": {
@@ -12779,7 +12779,7 @@
   "prefJa": "鹿児島県",
   "muniJa": "西之表市",
   "prefEn": "Kagoshima-ken",
-  "muniEn": "Nishinōmote-shi"
+  "muniEn": "Nishinoomote-shi"
  },
  "46214": {
   "prefJa": "鹿児島県",
@@ -12803,7 +12803,7 @@
   "prefJa": "鹿児島県",
   "muniJa": "曽於市",
   "prefEn": "Kagoshima-ken",
-  "muniEn": "Sō-shi"
+  "muniEn": "Soo-shi"
  },
  "46218": {
   "prefJa": "鹿児島県",
@@ -12898,7 +12898,7 @@
   "muniJa": "大崎町",
   "prefEn": "Kagoshima-ken",
   "muniEn": "Ōsaki-chō",
-  "gunEn": "Sō-gun",
+  "gunEn": "Soo-gun",
   "gunJa": "曽於郡"
  },
  "46482": {
@@ -12977,7 +12977,7 @@
   "prefJa": "鹿児島県",
   "muniJa": "瀬戸内町",
   "prefEn": "Kagoshima-ken",
-  "muniEn": "Setōchi-chō",
+  "muniEn": "Setouchi-chō",
   "gunEn": "Ōshima-gun",
   "gunJa": "大島郡"
  },
