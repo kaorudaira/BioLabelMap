@@ -97,6 +97,32 @@ void main() {
       expect(tester.widget<Icon>(find.byIcon(Icons.warning_rounded)).color, provisionalColor);
     });
 
+    testWidgets('学名はイタリック体、和名は立体で表示する', (tester) async {
+      await pumpList(tester, [item(1, species: carabus), item(2, species: SpeciesName(genus: 'Atheta', species: 'x'))]);
+      // 和名と学名の両方がある行
+      final both = tester.widget<RichText>(find.byWidgetPredicate(
+        (w) => w is RichText && w.text.toPlainText() == 'オサムシ Carabus insulicola',
+      ));
+      final spans = <TextSpan>[];
+      both.text.visitChildren((s) {
+        if (s is TextSpan && s.text != null) spans.add(s);
+        return true;
+      });
+      expect(spans.map((s) => (s.text, s.style?.fontStyle)), [
+        ('オサムシ', null),
+        (' ', null),
+        ('Carabus insulicola', FontStyle.italic),
+      ]);
+      // 学名だけの行も、イタリック体
+      final only = tester.widget<RichText>(find.byWidgetPredicate((w) => w is RichText && w.text.toPlainText() == 'Atheta x'));
+      var italic = false;
+      only.text.visitChildren((s) {
+        if (s is TextSpan && s.text == 'Atheta x') italic = s.style?.fontStyle == FontStyle.italic;
+        return true;
+      });
+      expect(italic, isTrue);
+    });
+
     testWidgets('行と行の間に、区切りの線を入れる', (tester) async {
       final other = SpeciesName(vernacular: 'ヒメオサムシ', genus: 'Carabus', species: 'other');
       await pumpList(tester, [item(1, species: carabus), item(2, species: other), item(3)]);

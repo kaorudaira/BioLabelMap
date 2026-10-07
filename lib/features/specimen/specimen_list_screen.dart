@@ -7,6 +7,7 @@ import '../../domain/specimen_list.dart';
 import '../../domain/status.dart';
 import '../../services/service_providers.dart';
 import 'specimen_filter_sheet.dart';
+import 'species_name_text.dart';
 import 'status_mark.dart';
 
 /// 標本一覧(要件定義 S-04)。種・採集日・場所・採集方法が同じ標本は1行にまとめる。
@@ -136,7 +137,7 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text('${group.first.species.label} ×${group.count}', style: Theme.of(context).textTheme.titleMedium),
+              child: SpeciesNameText(group.first.species, suffix: ' ×${group.count}', style: Theme.of(context).textTheme.titleMedium),
             ),
             for (final item in group.items)
               ListTile(
@@ -214,8 +215,8 @@ class _GroupTile extends StatelessWidget {
                     children: [
                       StatusMark(first.status),
                       Flexible(
-                        child: Text(
-                          first.species.label,
+                        child: SpeciesNameText(
+                          first.species,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: unidentified ? theme.disabledColor : BlockColors.identification,
