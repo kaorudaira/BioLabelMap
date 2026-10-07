@@ -90,6 +90,7 @@ List<SpecimenGroup> groupSpecimens(Iterable<SpecimenListItem> items) {
       item.period.toIso(),
       item.methodLabel,
       item.species.key,
+      item.status.name,
     ].join('\u0001');
     (groups[key] ??= []).add(item);
   }

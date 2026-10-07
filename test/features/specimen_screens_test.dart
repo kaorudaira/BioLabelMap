@@ -1,3 +1,4 @@
+import 'package:biolabelmap/app/theme.dart';
 import 'package:biolabelmap/core/db/database.dart';
 import 'package:biolabelmap/domain/models/calendar_date.dart';
 import 'package:biolabelmap/domain/models/collection_period.dart';
@@ -19,7 +20,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
-SpecimenListItem item(int n, {SpeciesName species = SpeciesName.unidentified, bool printed = false}) =>
+SpecimenListItem item(
+  int n, {
+  SpeciesName species = SpeciesName.unidentified,
+  bool printed = false,
+  IdentificationStatus? status,
+}) =>
     SpecimenListItem(
       id: n,
       catalogNumber: n,
@@ -29,7 +35,7 @@ SpecimenListItem item(int n, {SpeciesName species = SpeciesName.unidentified, bo
       method: SamplingMethod.sweeping,
       methodLabel: 'スウィーピング',
       species: species,
-      status: species.isEmpty ? IdentificationStatus.unidentified : IdentificationStatus.provisional,
+      status: status ?? (species.isEmpty ? IdentificationStatus.unidentified : IdentificationStatus.provisional),
       placeJa: '新潟県魚沼市下折立',
       placeEn: 'Shimooritate',
       printed: printed,
@@ -70,6 +76,32 @@ void main() {
       expect(find.text('標本 4件(2行)'), findsOneWidget);
       // 未印刷の行にだけマークが付く
       expect(find.byIcon(Icons.print_disabled), findsOneWidget);
+    });
+
+    testWidgets('同定済みは和名の左に緑のチェックマーク、仮同定は三角の中のビックリマークを付ける', (tester) async {
+      final other = SpeciesName(vernacular: 'ヒメオサムシ', genus: 'Carabus', species: 'other');
+      await pumpList(tester, [
+        item(1, species: carabus, status: IdentificationStatus.verified),
+        item(2, species: other),
+        item(3),
+      ]);
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+      final mark = tester.getCenter(find.byIcon(Icons.check_circle));
+      final name = tester.getTopLeft(find.text('オサムシ Carabus insulicola'));
+      expect(mark.dx, lessThan(name.dx));
+      expect(tester.widget<Icon>(find.byIcon(Icons.check_circle)).color, verifiedColor);
+      // 仮同定は、三角の中のビックリマーク。未同定には何も付けない
+      expect(find.byIcon(Icons.warning_rounded), findsOneWidget);
+      final warn = tester.getCenter(find.byIcon(Icons.warning_rounded));
+      expect(warn.dx, lessThan(tester.getTopLeft(find.text('ヒメオサムシ Carabus other')).dx));
+      expect(tester.widget<Icon>(find.byIcon(Icons.warning_rounded)).color, provisionalColor);
+    });
+
+    testWidgets('行と行の間に、区切りの線を入れる', (tester) async {
+      final other = SpeciesName(vernacular: 'ヒメオサムシ', genus: 'Carabus', species: 'other');
+      await pumpList(tester, [item(1, species: carabus), item(2, species: other), item(3)]);
+      // 3行それぞれの下に線がある(行が増えても、行ごとに区切られる)
+      expect(find.byType(Divider), findsNWidgets(3));
     });
 
     testWidgets('標本が無いときは案内を出す', (tester) async {
@@ -197,6 +229,38 @@ void main() {
       // 履歴は新しい順に、最新と古いものの両方が並ぶ
       expect(find.textContaining('Carabus old'), findsOneWidget);
       expect(find.text('同地点で追加'), findsOneWidget);
+      // 仮同定には、同定済みの印を付けない
+      expect(find.byIcon(Icons.check_circle), findsNothing);
+      // 仮同定の印は、最新の同定と、履歴の2行に付く
+      expect(find.byIcon(Icons.warning_rounded), findsNWidgets(3));
+    });
+
+    testWidgets('同定済みなら、最新の同定の和名の左と、履歴の同定済みの行に緑のチェックマークを付ける', (tester) async {
+      var d = await seed(tester);
+      final updated = await tester.runAsync<SpecimenDetail?>(() async {
+        // 最新の同定だけを、同定済みにする
+        await (db.update(db.identifications)..where((i) => i.id.equals(d.latest!.id)))
+            .write(const IdentificationsCompanion(status: Value(IdentificationStatus.verified)));
+        return SpecimenService(db).detail(d.specimen.id);
+      });
+      d = updated!;
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [specimenDetailProvider(d.specimen.id).overrideWith((ref) => Stream.value(d))],
+          child: MaterialApp(home: SpecimenDetailScreen(specimenId: d.specimen.id)),
+        ),
+      );
+      await tester.pump();
+
+      // 最新の同定(和名の行)と、履歴の最新の行の2か所
+      expect(find.byIcon(Icons.check_circle), findsNWidgets(2));
+      // 古い仮同定の履歴には、仮同定の印が付いたまま
+      expect(find.byIcon(Icons.warning_rounded), findsOneWidget);
+      final mark = tester.getCenter(find.byIcon(Icons.check_circle).first);
+      expect(mark.dx, lessThan(tester.getTopLeft(find.text('オサムシ')).dx));
     });
 
     testWidgets('無い標本には案内を出す', (tester) async {

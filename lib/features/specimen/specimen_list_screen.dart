@@ -7,6 +7,7 @@ import '../../domain/specimen_list.dart';
 import '../../domain/status.dart';
 import '../../services/service_providers.dart';
 import 'specimen_filter_sheet.dart';
+import 'status_mark.dart';
 
 /// 標本一覧(要件定義 S-04)。種・採集日・場所・採集方法が同じ標本は1行にまとめる。
 class SpecimenListScreen extends ConsumerStatefulWidget {
@@ -103,7 +104,14 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
           );
         }
         final group = groups[i - 1];
-        return _GroupTile(group: group, onTap: () => _open(group));
+        // 行と行の間に区切りの線を入れる
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _GroupTile(group: group, onTap: () => _open(group)),
+            const Divider(height: 1),
+          ],
+        );
       },
     );
   }
@@ -202,12 +210,19 @@ class _GroupTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    first.species.label,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: unidentified ? theme.disabledColor : BlockColors.identification,
-                    ),
+                  Row(
+                    children: [
+                      StatusMark(first.status),
+                      Flexible(
+                        child: Text(
+                          first.species.label,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: unidentified ? theme.disabledColor : BlockColors.identification,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(
