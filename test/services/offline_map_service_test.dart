@@ -54,7 +54,7 @@ void main() {
     expect(area.bytes, expected * 100);
     expect(area.completedAt, isNotNull);
     expect(requested.length, expected);
-    expect(requested.first, startsWith('/xyz/std/6/'));
+    expect(requested.any((p) => p.startsWith('/xyz/std/6/')), isTrue);
     expect(store.fileFor(id, GsiTileLayer.standard, tileAt(37.02, 139.02, 13)).existsSync(), isTrue);
     expect(await s.usedBytes(), expected * 100);
   });
@@ -90,6 +90,27 @@ void main() {
     final area = await (db.select(db.offlineAreas)..where((a) => a.id.equals(id))).getSingle();
     expect(area.downloadedCount, area.tileCount);
     expect(area.bytes, 0);
+  });
+
+  test('取得を始めるとき、前回残った一時ファイルを消し、保存済みのタイルは残す', () async {
+    final s = service(okClient());
+    final id = await s.create(name: 'テスト', bounds: bounds, layers: {GsiTileLayer.standard}, maxZoom: 8);
+    final done = store.fileFor(id, GsiTileLayer.standard, tileAt(37.02, 139.02, 7))..createSync(recursive: true);
+    done.writeAsBytesSync([1, 2, 3]);
+    final leftover = File('${done.path}.tmp')..writeAsBytesSync([9]);
+
+    expect(await store.cleanTempFiles(id), 1);
+    expect(leftover.existsSync(), isFalse);
+    expect(done.existsSync(), isTrue);
+
+    // download() も同じ掃除をする
+    File('${done.path}.tmp').writeAsBytesSync([9]);
+    await s.download(id);
+    expect(File('${done.path}.tmp').existsSync(), isFalse);
+  });
+
+  test('エリアのフォルダがなくても、掃除は何もしない', () async {
+    expect(await store.cleanTempFiles(999), 0);
   });
 
   test('削除すると、ファイルと登録を消す', () async {

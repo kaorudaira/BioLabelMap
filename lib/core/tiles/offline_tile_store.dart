@@ -20,6 +20,20 @@ class OfflineTileStore {
     '${root.path}/area_$areaId/${layer.id}/${t.z}/${t.x}/${t.y}.${layer.extension}',
   );
 
+  /// 書き込み途中で終了して残った一時ファイル(`.tmp`)を消す。取得を始める前に呼ぶ。
+  Future<int> cleanTempFiles(int areaId) async {
+    final dir = Directory('${root.path}/area_$areaId');
+    if (!await dir.exists()) return 0;
+    var removed = 0;
+    await for (final entity in dir.list(recursive: true, followLinks: false)) {
+      if (entity is File && entity.path.endsWith('.tmp')) {
+        await entity.delete();
+        removed++;
+      }
+    }
+    return removed;
+  }
+
   Future<void> deleteArea(int areaId) async {
     final dir = Directory('${root.path}/area_$areaId');
     if (await dir.exists()) await dir.delete(recursive: true);

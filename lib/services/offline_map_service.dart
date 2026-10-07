@@ -28,8 +28,8 @@ class OfflineMapService {
     this._db,
     this._store,
     this._client, {
-    this.concurrency = 2,
-    this.interval = const Duration(milliseconds: 150),
+    this.concurrency = 4,
+    this.interval = const Duration(milliseconds: 50),
   });
 
   final AppDatabase _db;
@@ -106,6 +106,8 @@ class OfflineMapService {
     )..where((a) => a.id.equals(id))).getSingle();
     final job = _running[id] = _Job();
     try {
+      // 前回、書き込み途中で終了して残った一時ファイルを消す
+      await _store.cleanTempFiles(id);
       final layers = {
         for (final n in area.layers.split(',')) GsiTileLayer.values.byName(n),
       };
