@@ -366,12 +366,24 @@ class _OfflineAreaNewScreenState extends ConsumerState<OfflineAreaNewScreen> {
               Text(
                 estimate == null
                     ? '範囲を決めてください'
-                    : '約${estimate.tileCount}枚、約${formatBytes(estimate.bytes)}'
-                          '${tooBig ? '(1エリアの上限 ${formatBytes(offlineAreaLimitBytes)} を超えています。範囲を狭めるか、ズームを下げてください)' : ''}',
+                    : '約${estimate.tileCount}枚、約${formatBytes(estimate.bytes)}',
                 style: TextStyle(
                   color: tooBig ? Colors.red : null,
                   fontWeight: FontWeight.w600,
                 ),
+              ),
+              // 警告の欄は、出ていないときも同じ高さを確保する。
+              // 高さが変わると地図の大きさが変わって範囲が変わり、警告の出入りが繰り返されるため
+              SizedBox(
+                height: 36,
+                child: tooBig
+                    ? Text(
+                        '1エリアの上限(${formatBytes(offlineAreaLimitBytes)})を超えています。範囲を狭めるか、ズームを下げてください',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      )
+                    : null,
               ),
               const SizedBox(height: 8),
               Row(
