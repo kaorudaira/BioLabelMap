@@ -21,6 +21,7 @@ const _csv = '''﻿和名,学名\r
 ''';
 
 void main() {
+  _compareTests();
   final catalog = SpeciesCatalog.parseCsv(_csv);
 
   CatalogEntry find(String genus, String species, [String? subspecies]) =>
@@ -130,3 +131,42 @@ void main() {
 }
 
 String _readAsset() => File('assets/data/beetles_master.csv').readAsStringSync();
+
+void _compareTests() {
+  group('和名の50音順', () {
+    List<String?> sorted(List<SpeciesName> list) =>
+        (list..sort(compareByVernacular)).map((n) => n.vernacular ?? n.scientific).toList();
+
+    test('ひらがなはカタカナとして比べ、和名の無い種は最後に回す', () {
+      expect(
+        sorted([
+          SpeciesName(genus: 'Zeta', species: 'a'),
+          SpeciesName(vernacular: 'ヒメハナ', genus: 'A', species: 'a'),
+          SpeciesName(vernacular: 'あかむし', genus: 'B', species: 'b'),
+          SpeciesName(vernacular: 'オサムシ', genus: 'C', species: 'c'),
+          SpeciesName(vernacular: 'アオムシ', genus: 'D', species: 'd'),
+        ]),
+        ['アオムシ', 'あかむし', 'オサムシ', 'ヒメハナ', 'Zeta a'],
+      );
+    });
+
+    test('濁音は清音の直後、注記つきは注記なしの前後で安定して並ぶ', () {
+      expect(
+        sorted([
+          SpeciesName(vernacular: 'ガ', genus: 'A', species: 'a'),
+          SpeciesName(vernacular: 'キ', genus: 'A', species: 'b'),
+          SpeciesName(vernacular: 'カ', genus: 'A', species: 'c'),
+        ]),
+        ['カ', 'ガ', 'キ'],
+      );
+    });
+
+    test('同じ和名は、学名の順にする', () {
+      final list = [
+        SpeciesName(vernacular: 'ア', genus: 'B', species: 'x'),
+        SpeciesName(vernacular: 'ア', genus: 'A', species: 'y'),
+      ]..sort(compareByVernacular);
+      expect(list.map((n) => n.genus), ['A', 'B']);
+    });
+  });
+}

@@ -78,8 +78,8 @@ class SpeciesCatalog {
   final List<CatalogEntry> entries;
 
   /// 和名・属・亜属・種・亜種に [query] を含む種を返す。空白で区切った語は、すべてを含むものだけ。
-  /// 先頭が一致するものを先に並べる。
-  List<CatalogEntry> search(String query, {int limit = 8}) {
+  /// 先頭が一致するものを先に並べる。[limit] が null なら、合うものを全て返す。
+  List<CatalogEntry> search(String query, {int? limit = 8}) {
     final words = query.trim().toLowerCase().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
     if (words.isEmpty) return const [];
     final starts = <CatalogEntry>[];
@@ -87,9 +87,10 @@ class SpeciesCatalog {
     for (final e in entries) {
       if (!words.every(e._haystack.contains)) continue;
       (e._haystack.startsWith(words.first) ? starts : contains).add(e);
-      if (starts.length >= limit) break;
+      if (limit != null && starts.length >= limit) break;
     }
-    return [...starts, ...contains].take(limit).toList();
+    final all = [...starts, ...contains];
+    return limit == null ? all : all.take(limit).toList();
   }
 
   /// 入力した種名に完全に一致する種が1つだけあれば、それを返す(自動入力用)。
