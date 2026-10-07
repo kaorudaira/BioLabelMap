@@ -21,14 +21,11 @@ String? oazaPrefixOf(String name) {
   return null;
 }
 
-/// 大字のローマ字の末尾が `chō` のとき、`-cho`(ハイフン+マクロンなし)にする。
-/// `Tondenchō` → `Tonden-cho`、`Higashi-chō` → `Higashi-cho`。
-/// 公的データは長音を省いて書くので、マクロンはカナから補ったもの。町(ちょう)の長音は付けない。
-/// 名前が `chō` だけのときは、ハイフンを付けずにマクロンだけ外す(`Chō` → `Cho`)。
+/// 大字のローマ字の末尾が `chō` のとき、直前にハイフンを入れて `-chō` にする(マクロンは残す)。
+/// `Tondenchō` → `Tonden-chō`。すでに `Higashi-chō` なら変えない。
+/// 名前が `chō` だけのときも変えない。
 String applyChoSuffixRule(String romaji) {
-  final m = RegExp(r'^(.*?)-?([Cc][Hh])([ōŌ])$').firstMatch(romaji);
+  final m = RegExp(r'^(.+?)-?([Cc][Hh][ōŌ])$').firstMatch(romaji);
   if (m == null) return romaji;
-  final stem = m.group(1)!;
-  final cho = '${m.group(2)}${m.group(3) == 'Ō' ? 'O' : 'o'}';
-  return stem.isEmpty ? cho : '$stem-$cho';
+  return '${m.group(1)}-${m.group(2)}';
 }
