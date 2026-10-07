@@ -91,6 +91,61 @@ void main() {
     });
   });
 
+  group('searchPlaces', () {
+    Map<String, Object?> feature(String title, double lon, double lat) => {
+      'type': 'Feature',
+      'geometry': {'type': 'Point', 'coordinates': [lon, lat]},
+      'properties': {'title': title, 'addressCode': ''},
+    };
+
+    test('名前と座標を取り出し、検索語と同じ名前を先に並べる', () async {
+      final hits = await apiReturning([
+        feature('神奈川県横須賀市武', 139.65, 35.22),
+        feature('武尊山', 139.1326, 36.8052),
+      ]).searchPlaces('武尊山');
+      expect(hits.map((h) => h.title), ['武尊山', '神奈川県横須賀市武']);
+      expect(hits.first.latitude, closeTo(36.8052, 1e-9));
+      expect(hits.first.longitude, closeTo(139.1326, 1e-9));
+    });
+
+    test('検索語をクエリに入れる。空の検索語は通信しない', () async {
+      var calls = 0;
+      late Uri requested;
+      final api = GsiApi(MockClient((request) async {
+        calls++;
+        requested = request.url;
+        return http.Response('[]', 200);
+      }));
+      expect(await api.searchPlaces('   '), isEmpty);
+      expect(calls, 0);
+      await api.searchPlaces('尾瀬ヶ原');
+      expect(requested.queryParameters, {'q': '尾瀬ヶ原'});
+    });
+
+    test('形が違う項目は読み飛ばし、結果が配列でなければ空', () async {
+      final hits = await apiReturning([
+        {'geometry': {}, 'properties': {}},
+        feature('谷川岳', 138.93, 36.83),
+      ]).searchPlaces('谷川岳');
+      expect(hits.map((h) => h.title), ['谷川岳']);
+      expect(await apiReturning({'error': 1}).searchPlaces('x'), isEmpty);
+    });
+
+    test('最大件数で切る', () async {
+      final hits = await apiReturning([
+        for (var i = 0; i < 50; i++) feature('地名$i', 139, 36),
+      ]).searchPlaces('地名', maxResults: 30);
+      expect(hits.length, 30);
+    });
+
+    test('通信エラーは GsiNetworkException', () async {
+      await expectLater(
+        apiReturning([], status: 500).searchPlaces('x'),
+        throwsA(isA<GsiNetworkException>()),
+      );
+    });
+  });
+
   group('JsonMunicipalityDirectory', () {
     final directory = JsonMunicipalityDirectory.parse(jsonEncode({
       '1101': {
