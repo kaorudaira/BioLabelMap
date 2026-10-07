@@ -135,6 +135,7 @@ class SpecimenService {
       ),
       placeEn: [l.localityEn, l.municipalityEn, l.countyEn, l.prefectureEn].whereType<String>().join(' '),
       printed: s.printedAt != null,
+      deletedAt: s.deletedAt,
     );
   }
 }

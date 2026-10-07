@@ -19,6 +19,7 @@ class SpecimenListItem {
     required this.placeJa,
     required this.placeEn,
     required this.printed,
+    this.deletedAt,
   });
 
   final int id;
@@ -39,6 +40,9 @@ class SpecimenListItem {
   final String placeJa;
   final String placeEn;
   final bool printed;
+
+  /// ごみ箱に移した日時。ごみ箱の外の標本は null。
+  final DateTime? deletedAt;
 }
 
 /// 種・採集日・場所・採集方法が同じ標本を1行にまとめたもの。

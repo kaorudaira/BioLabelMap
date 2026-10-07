@@ -21,7 +21,7 @@ void main() {
   tearDown(() => db.close());
 
   /// 3標本を記録し、1件目だけ同定する(2件目は印刷済みにする)。
-  Future<void> pumpScreen(WidgetTester tester) async {
+  Future<void> pumpScreen(WidgetTester tester, {Set<int> Function(List<LabelCandidate>)? pick}) async {
     tester.view.physicalSize = const Size(800, 1800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -51,7 +51,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [labelCandidatesProvider.overrideWith((ref) => Stream.value(candidates!))],
-        child: const MaterialApp(home: LabelScreen()),
+        child: MaterialApp(home: LabelScreen(specimenIds: pick?.call(candidates!))),
       ),
     );
     await tester.pump();
@@ -90,5 +90,14 @@ void main() {
     await tester.tap(find.text('データ+コレクション'));
     await tester.pump();
     expect(find.text('PDFを作成(4枚・1ページ)'), findsOneWidget);
+  });
+
+  testWidgets('標本を選んで開いたときは、その標本だけが対象で、印刷済みも含める', (tester) async {
+    // 1件目(未印刷)と2件目(印刷済み)を選んで開く
+    await pumpScreen(tester, pick: (c) => {c[0].specimen.id, c[1].specimen.id});
+    expect(find.text('PDFを作成(4枚・1ページ)'), findsOneWidget);
+    expect(find.text('印刷済み'), findsOneWidget);
+    expect(find.textContaining('KYC00003'), findsNothing);
+    expect(tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '未印刷のみ')).value, isFalse);
   });
 }

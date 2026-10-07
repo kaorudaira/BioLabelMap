@@ -10,6 +10,7 @@ import '../../domain/status.dart';
 import '../../services/service_providers.dart';
 import '../../services/specimen_service.dart';
 import '../identification/identify_screen.dart';
+import 'bulk_edit_screen.dart';
 import '../record/form_block.dart';
 import '../record/record_form.dart';
 import '../record/record_screen.dart';
@@ -43,22 +44,61 @@ class SpecimenDetailScreen extends ConsumerWidget {
               _history(context, d),
             ],
           ),
-          bottomNavigationBar: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: FilledButton.icon(
-                onPressed: () => context.push(
-                  '/record',
-                  extra: RecordArgs(RecordForm.fromEvent(d.event, d.locality)),
-                ),
-                icon: const Icon(Icons.add_location_alt),
-                label: const Text('同地点で追加'),
+          // 画面下の操作(要件定義 S-05):編集、同地点で追加、ラベル出力、削除
+          bottomNavigationBar: Material(
+            elevation: 8,
+            child: SafeArea(
+              child: Row(
+                children: [
+                  _BarAction(
+                    icon: Icons.edit,
+                    label: '編集',
+                    onTap: () => context.push(
+                      '/bulk-edit',
+                      extra: BulkEditArgs([d.specimen.id], initial: d),
+                    ),
+                  ),
+                  _BarAction(
+                    icon: Icons.add_location_alt,
+                    label: '同地点で追加',
+                    onTap: () => context.push(
+                      '/record',
+                      extra: RecordArgs(RecordForm.fromEvent(d.event, d.locality)),
+                    ),
+                  ),
+                  _BarAction(
+                    icon: Icons.print,
+                    label: 'ラベル出力',
+                    onTap: () => context.push('/labels', extra: [d.specimen.id]),
+                  ),
+                  _BarAction(icon: Icons.delete_outline, label: '削除', onTap: () => _delete(context, ref, d)),
+                ],
               ),
             ),
           ),
         );
       },
     );
+  }
+
+  /// ごみ箱に移して、一覧に戻る。
+  Future<void> _delete(BuildContext context, WidgetRef ref, SpecimenDetail d) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${d.specimen.catalogText}をごみ箱に移しますか'),
+        content: const Text('30日以内なら、ごみ箱から元の標本番号のまま戻せます。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('やめる')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('ごみ箱に移す')),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    await ref.read(specimenEditServiceProvider).moveToTrash([d.specimen.id]);
+    if (!context.mounted) return;
+    context.pop();
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ごみ箱に移しました')));
   }
 
   Widget _identification(BuildContext context, SpecimenDetail d) {
@@ -233,4 +273,27 @@ class _Field extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 画面下の操作の1つ(アイコンと名前)。
+class _BarAction extends StatelessWidget {
+  const _BarAction({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [Icon(icon), const SizedBox(height: 2), Text(label, style: const TextStyle(fontSize: 12))],
+        ),
+      ),
+    ),
+  );
 }

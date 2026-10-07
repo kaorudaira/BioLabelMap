@@ -28,6 +28,8 @@ class _BioLabelMapAppState extends ConsumerState<BioLabelMapApp> {
     // アプリを開いたとき・前面に戻ったときに、補完待ちを取得する(要件定義 第13章)
     _lifecycle = AppLifecycleListener(onResume: _enrich);
     WidgetsBinding.instance.addPostFrameCallback((_) => _enrich());
+    // 保持期間を過ぎたごみ箱の標本を、完全に削除する(要件定義 S-04「ごみ箱」)
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(ref.read(specimenEditServiceProvider).purgeExpired()));
   }
 
   void _enrich() => unawaited(ref.read(enrichmentSchedulerProvider).trigger());
