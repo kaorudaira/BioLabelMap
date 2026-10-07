@@ -131,6 +131,15 @@ void main() {
       expect(await apiReturning({'error': 1}).searchPlaces('x'), isEmpty);
     });
 
+    test('同じ名前で同じ場所の結果は1件にまとめ、離れた同名は残す', () async {
+      final hits = await apiReturning([
+        feature('みずがき湖', 138.5009, 35.8592),
+        feature('みずがき湖', 138.50091, 35.85921),
+        feature('みずがき湖', 139.0, 36.0),
+      ]).searchPlaces('みずがき');
+      expect(hits.length, 2);
+    });
+
     test('最大件数で切る', () async {
       final hits = await apiReturning([
         for (var i = 0; i < 50; i++) feature('地名$i', 139, 36),
