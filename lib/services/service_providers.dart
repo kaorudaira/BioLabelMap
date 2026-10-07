@@ -131,6 +131,10 @@ final specimenItemsProvider = StreamProvider<List<SpecimenListItem>>(
   (ref) => ref.watch(specimenServiceProvider).watchItems(),
 );
 
+final localityProvider = StreamProvider.family<Locality?, int>(
+  (ref, id) => ref.watch(specimenServiceProvider).watchLocality(id),
+);
+
 final specimenDetailProvider = StreamProvider.family<SpecimenDetail?, int>(
   (ref, id) => ref.watch(specimenServiceProvider).watchDetail(id),
 );

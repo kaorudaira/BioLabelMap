@@ -34,6 +34,7 @@ SpecimenListItem item(
 );
 
 void main() {
+  _spanTests();
   final carabus = SpeciesName(vernacular: 'オサムシ', genus: 'Carabus', species: 'insulicola');
 
   group('SpeciesName', () {
@@ -188,5 +189,21 @@ void main() {
       expect(formatPlaceJa(prefecture: '長野県', county: '北安曇郡', municipality: '白馬村'), '長野県北安曇郡白馬村');
       expect(formatPlaceJa(), '');
     });
+  });
+}
+
+void _spanTests() {
+  group('採集日の範囲', () {
+    test('いちばん早い開始日から、いちばん遅い終了日まで', () {
+      final span = periodSpanOf([
+        item(1, period: CollectionPeriod.singleDay(CalendarDate(2026, 6, 20))),
+        item(2, period: CollectionPeriod(CalendarDate(2026, 6, 19), CalendarDate(2026, 6, 21))),
+        item(3, period: CollectionPeriod.singleDay(CalendarDate(2026, 7, 2))),
+      ])!;
+      expect(span.start, CalendarDate(2026, 6, 19));
+      expect(span.end, CalendarDate(2026, 7, 2));
+    });
+
+    test('標本が無ければ null', () => expect(periodSpanOf(const []), isNull));
   });
 }

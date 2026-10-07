@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../app/theme.dart';
 import '../../domain/specimen_list.dart';
 import '../../domain/status.dart';
 import '../../services/service_providers.dart';
 import 'specimen_filter_sheet.dart';
-import 'species_name_text.dart';
-import 'status_mark.dart';
+import 'specimen_group_tile.dart';
 
 /// 標本一覧(要件定義 S-04)。種・採集日・場所・採集方法が同じ標本は1行にまとめる。
 class SpecimenListScreen extends ConsumerStatefulWidget {
@@ -109,7 +106,7 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _GroupTile(group: group, onTap: () => _open(group)),
+            SpecimenGroupTile(group: group, onTap: () => openSpecimenGroup(context, group)),
             const Divider(height: 1),
           ],
         );
@@ -122,36 +119,6 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
     if (result != null) setState(() => _filter = result);
   }
 
-  /// 1件ならそのまま詳細へ。複数なら、どの標本を開くか選ぶ。
-  Future<void> _open(SpecimenGroup group) async {
-    if (group.count == 1) {
-      context.push('/specimens/${group.first.id}');
-      return;
-    }
-    final id = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: SpeciesNameText(group.first.species, suffix: ' ×${group.count}', style: Theme.of(context).textTheme.titleMedium),
-            ),
-            for (final item in group.items)
-              ListTile(
-                leading: Icon(item.printed ? Icons.print : Icons.print_disabled, color: item.printed ? null : warningColor),
-                title: Text(item.catalogText),
-                subtitle: Text(item.printed ? '印刷済み' : '未印刷'),
-                onTap: () => Navigator.pop(context, item.id),
-              ),
-          ],
-        ),
-      ),
-    );
-    if (id != null && mounted) context.push('/specimens/$id');
-  }
 }
 
 /// 絞り込み中の条件を、画面上部に示す(要件定義 S-04)。
@@ -185,68 +152,3 @@ class _ConditionBar extends StatelessWidget {
   }
 }
 
-class _GroupTile extends StatelessWidget {
-  const _GroupTile({required this.group, required this.onTap});
-
-  final SpecimenGroup group;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final first = group.first;
-    final theme = Theme.of(context);
-    final unidentified = first.species.isEmpty;
-    final place = first.placeJa.isEmpty ? first.placeEn : first.placeJa;
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        decoration: const BoxDecoration(
-          border: Border(left: BorderSide(color: BlockColors.specimen, width: 6)),
-        ),
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      StatusMark(first.status),
-                      Flexible(
-                        child: SpeciesNameText(
-                          first.species,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: unidentified ? theme.disabledColor : BlockColors.identification,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    [formatPeriodText(first.period), if (place.isNotEmpty) place].join('  '),
-                    style: theme.textTheme.bodyMedium?.copyWith(color: BlockColors.location),
-                  ),
-                  Text(first.methodLabel, style: theme.textTheme.bodySmall?.copyWith(color: BlockColors.collecting)),
-                  const SizedBox(height: 2),
-                  Text(
-                    '×${group.count}  ${group.catalogRuns}',
-                    style: theme.textTheme.bodySmall?.copyWith(color: BlockColors.specimen),
-                  ),
-                ],
-              ),
-            ),
-            if (group.hasUnprinted)
-              const Tooltip(
-                message: '未印刷',
-                child: Icon(Icons.print_disabled, size: 20, color: warningColor),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}

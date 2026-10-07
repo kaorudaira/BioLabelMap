@@ -9,6 +9,7 @@ import '../features/offline/offline_area_new_screen.dart';
 import '../features/offline/offline_maps_screen.dart';
 import '../features/record/record_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/specimen/locality_detail_screen.dart';
 import '../features/specimen/specimen_detail_screen.dart';
 import '../features/specimen/specimen_list_screen.dart';
 
@@ -21,6 +22,10 @@ GoRouter buildRouter() => GoRouter(
     GoRoute(
       path: '/identify',
       builder: (context, state) => IdentifyScreen(args: state.extra! as IdentifyArgs),
+    ),
+    GoRoute(
+      path: '/localities/:id',
+      builder: (context, state) => LocalityDetailScreen(localityId: int.parse(state.pathParameters['id']!)),
     ),
     GoRoute(path: '/specimens', builder: (context, state) => const SpecimenListScreen()),
     GoRoute(
