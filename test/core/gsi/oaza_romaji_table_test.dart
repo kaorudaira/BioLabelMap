@@ -26,6 +26,44 @@ void main() {
     });
   });
 
+  group('applyChoSuffixRule', () {
+    test('末尾の chō を -cho にする', () {
+      expect(applyChoSuffixRule('Tondenchō'), 'Tonden-cho');
+      expect(applyChoSuffixRule('Okadamachō'), 'Okadama-cho');
+      expect(applyChoSuffixRule('Higashi-chō'), 'Higashi-cho');
+      expect(applyChoSuffixRule('HAGIWARACHŌ'), 'HAGIWARA-CHO');
+    });
+
+    test('名前が chō だけなら、ハイフンを付けずにマクロンだけ外す', () {
+      expect(applyChoSuffixRule('Chō'), 'Cho');
+    });
+
+    test('末尾でない chō や、ほかの長音は変えない', () {
+      expect(applyChoSuffixRule('Chōnai'), 'Chōnai');
+      expect(applyChoSuffixRule('Shimōritate'), 'Shimōritate');
+      expect(applyChoSuffixRule('Nakajimakōen'), 'Nakajimakōen');
+      expect(applyChoSuffixRule('Tsuchidaru'), 'Tsuchidaru');
+      // すでに -cho のもの
+      expect(applyChoSuffixRule('Tonden-cho'), 'Tonden-cho');
+    });
+
+    test('ほかの長音を含むときは、chō だけ直し、確認は残る', () {
+      final table = OazaRomajiTable.parse(jsonEncode({'01101': {'本堂町': 'Hondōchō', '屯田町': 'Tondenchō'}}));
+      final hondo = table.lookup('01101', '本堂町')!;
+      expect(hondo.value, 'Hondō-cho');
+      expect(hondo.needsConfirmation, isTrue);
+      final tonden = table.lookup('01101', '屯田町')!;
+      expect(tonden.value, 'Tonden-cho');
+      expect(tonden.needsConfirmation, isFalse); // 他にマクロンがないので、確認なしで入る
+    });
+
+    test('同梱の対応表でも、末尾の chō は -cho になる', () {
+      final bundled = OazaRomajiTable.parse(File('assets/data/oaza_romaji.json').readAsStringSync());
+      expect(bundled.lookup('01102', '屯田町')?.value, 'Tonden-cho');
+      expect(bundled.lookup('01103', '丘珠町')?.value, 'Okadama-cho');
+    });
+  });
+
   /// 同梱している対応表(assets/data/oaza_romaji.json)。
   group('同梱の対応表', () {
     final table = OazaRomajiTable.parse(File('assets/data/oaza_romaji.json').readAsStringSync());

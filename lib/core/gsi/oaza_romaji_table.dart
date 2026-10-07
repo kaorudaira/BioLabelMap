@@ -42,6 +42,6 @@ class OazaRomajiTable {
   OazaRomaji? lookup(String? municipalityCode, String? localityJa) {
     if (municipalityCode == null || localityJa == null) return null;
     final value = _byCode[municipalityCode.padLeft(5, '0')]?[normalizeOazaName(localityJa)];
-    return value == null ? null : OazaRomaji(value);
+    return value == null ? null : OazaRomaji(applyChoSuffixRule(value));
   }
 }
