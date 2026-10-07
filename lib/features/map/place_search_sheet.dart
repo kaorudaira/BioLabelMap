@@ -8,12 +8,13 @@ import '../../services/service_providers.dart';
 
 /// 地名・住所の検索(地理院の地名検索API。通信が要る)。選んだ場所を返す。
 /// 山や川などの自然地名・施設名・住所を、漢字でもひらがなでも引ける。
-Future<PlaceHit?> showPlaceSearch(BuildContext context) => showModalBottomSheet<PlaceHit>(
-  context: context,
-  isScrollControlled: true,
-  showDragHandle: true,
-  builder: (context) => const _PlaceSearchSheet(),
-);
+Future<PlaceHit?> showPlaceSearch(BuildContext context) =>
+    showModalBottomSheet<PlaceHit>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => const _PlaceSearchSheet(),
+    );
 
 class _PlaceSearchSheet extends ConsumerStatefulWidget {
   const _PlaceSearchSheet();
@@ -82,11 +83,14 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
   @override
   Widget build(BuildContext context) {
     final hits = _hits;
-    return Padding(
-      // キーボードの分だけ持ち上げる
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.6,
+    // シートの高さは最初から固定する(キーボードで高さが変わると、開く途中で止まって広がる動きになる)。
+    // キーボードの分は、中身だけを縮めて避ける
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.9,
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: Column(
           children: [
             Padding(
@@ -120,7 +124,12 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
             if (_searching) const LinearProgressIndicator(),
             Expanded(
               child: _error != null
-                  ? Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_error!)))
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(_error!),
+                      ),
+                    )
                   : hits == null
                   ? const SizedBox.shrink()
                   : hits.isEmpty
@@ -130,7 +139,9 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
                       itemBuilder: (context, i) => ListTile(
                         leading: const Icon(Icons.place_outlined),
                         title: Text(hits[i].title),
-                        subtitle: Text('${hits[i].latitude.toStringAsFixed(4)}, ${hits[i].longitude.toStringAsFixed(4)}'),
+                        subtitle: Text(
+                          '${hits[i].latitude.toStringAsFixed(4)}, ${hits[i].longitude.toStringAsFixed(4)}',
+                        ),
                         onTap: () => Navigator.pop(context, hits[i]),
                       ),
                     ),
