@@ -1,3 +1,4 @@
+import '../../core/db/database.dart';
 import '../../domain/models/calendar_date.dart';
 import '../../domain/models/collection_period.dart';
 import '../../domain/models/place_info.dart';
@@ -54,6 +55,26 @@ class RecordForm {
       recordedAt: time,
     );
   }
+
+  /// 保存済みの採集をもとに、同じ地点へ追加する(標本詳細・地点詳細の「同地点で追加」)。
+  /// 地点・日時・採集方法・環境をコピーし、標本の項目は空にする。
+  factory RecordForm.fromEvent(CollectionEvent event, Locality locality, {DateTime? now}) => RecordForm(
+    latitude: locality.latitude,
+    longitude: locality.longitude,
+    accuracyMeters: locality.accuracyMeters,
+    isManualPosition: locality.isManualPosition,
+    existingLocalityId: locality.id,
+    startDate: event.startDate,
+    endDate: event.endDate,
+    isPeriod: event.startDate != event.endDate,
+    recordedAt: now ?? DateTime.now(),
+    samplingMethod: event.samplingMethod,
+    samplingMethodOther: event.samplingMethodOther ?? '',
+    lightSource: event.lightSource ?? '',
+    bait: event.bait ?? '',
+    habitat: event.habitat ?? '',
+    hostPlant: event.hostPlant ?? '',
+  );
 
   double latitude;
   double longitude;

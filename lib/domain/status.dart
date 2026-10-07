@@ -21,5 +21,14 @@ enum EnrichmentKind { elevation, place }
 /// 同定の状態(要件定義 F-11)。
 enum IdentificationStatus { unidentified, provisional, verified }
 
+extension IdentificationStatusLabel on IdentificationStatus {
+  /// 画面に出す名前。
+  String get label => switch (this) {
+    IdentificationStatus.unidentified => '未同定',
+    IdentificationStatus.provisional => '仮同定',
+    IdentificationStatus.verified => '同定済み',
+  };
+}
+
 /// 性別。
 enum Sex { male, female, unknown }
