@@ -8,24 +8,28 @@ import 'font_text_measurer.dart';
 
 /// ラベル用のフォント。PDF への埋め込みと幅の測定に同じファイルを使う。
 class LabelFonts {
-  LabelFonts({required ByteData latin, required ByteData japanese})
+  /// [latinItalic] が無いときは、イタリック体も立体で描く。
+  LabelFonts({required ByteData latin, required ByteData japanese, ByteData? latinItalic})
     : latinFont = pw.Font.ttf(latin),
+      latinItalicFont = latinItalic == null ? null : pw.Font.ttf(latinItalic),
       japaneseFont = pw.Font.ttf(japanese),
-      measurer = FontTextMeasurer(latinFont: latin, japaneseFont: japanese);
+      measurer = FontTextMeasurer(latinFont: latin, japaneseFont: japanese, latinItalicFont: latinItalic);
 
   /// assets から読み込む。
   static Future<LabelFonts> load() async => LabelFonts(
     latin: await rootBundle.load('assets/fonts/FiraSansCondensed-Regular.ttf'),
+    latinItalic: await rootBundle.load('assets/fonts/FiraSansCondensed-Italic.ttf'),
     japanese: await rootBundle.load('assets/fonts/BIZUDPGothic-Regular.ttf'),
   );
 
   final pw.Font latinFont;
+  final pw.Font? latinItalicFont;
   final pw.Font japaneseFont;
   final FontTextMeasurer measurer;
 
   /// 欧文フォントを基本にし、字形が無い文字(かな・漢字)は和文フォントで描く。
-  pw.TextStyle style(double sizePt) => pw.TextStyle(
-    font: latinFont,
+  pw.TextStyle style(double sizePt, {bool italic = false}) => pw.TextStyle(
+    font: italic ? (latinItalicFont ?? latinFont) : latinFont,
     fontFallback: [japaneseFont],
     fontSize: sizePt,
     lineSpacing: 0,
@@ -93,6 +97,27 @@ pw.Widget _labelContent(
             pw.SizedBox(
               height: line.fontSizePt * spec.lineHeightFactor,
               child: pw.Text(line.text, style: fonts.style(line.fontSizePt), maxLines: 1, softWrap: false),
+            ),
+        ],
+      );
+    case LabelKind.identification:
+      final layout = label.specimen.identificationLabel!;
+      return pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          for (final line in layout.lines)
+            pw.SizedBox(
+              height: layout.fontSizePt * spec.lineHeightFactor,
+              child: pw.RichText(
+                text: pw.TextSpan(
+                  children: [
+                    for (final run in line)
+                      pw.TextSpan(text: run.text, style: fonts.style(layout.fontSizePt, italic: run.italic)),
+                  ],
+                ),
+                maxLines: 1,
+                softWrap: false,
+              ),
             ),
         ],
       );

@@ -11,6 +11,7 @@ import '../../core/label/label_pdf.dart';
 import '../../domain/elevation_rounding.dart';
 import '../../domain/label/data_label_builder.dart';
 import '../../domain/label/data_label_layout.dart';
+import '../../domain/label/identification_label.dart';
 import '../../domain/label/date_range_format.dart';
 import '../../domain/label/label_sheet.dart';
 import '../../services/label_service.dart';
@@ -28,6 +29,7 @@ class LabelScreen extends ConsumerStatefulWidget {
 
 class _LabelScreenState extends ConsumerState<LabelScreen> {
   var _unprintedOnly = true;
+  var _unit = LabelUnit.dataAndCollection;
   var _arrangement = LabelArrangement.bySpecimen;
   var _cutLines = true;
   var _working = false;
@@ -40,11 +42,13 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
     final candidates = ref.watch(labelCandidatesProvider);
     final visible = [
       for (final c in candidates.value ?? const <LabelCandidate>[])
-        if (!_unprintedOnly || !c.printed) c,
+        // 未印刷のみは、データ・コレクションの印刷状態。同定ラベルだけを出すときは使わない
+        if (!_unprintedOnly || _unit == LabelUnit.identificationOnly || !c.printed) c,
     ];
     final targets = [for (final c in visible) if (!_excluded.contains(c.specimen.id)) c];
-    // データラベルとコレクションラベルで、1標本2枚
-    final pages = LabelSheetSpec.postcard.pagesFor(targets.length * 2);
+    final identified = targets.where((c) => c.identificationSource != null).length;
+    final labelCount = _labelCount(targets.length, identified);
+    final pages = LabelSheetSpec.postcard.pagesFor(labelCount);
 
     return Scaffold(
       appBar: AppBar(title: const Text('ラベル出力')),
@@ -52,7 +56,8 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
         padding: const EdgeInsets.all(12),
         children: [
           _options(),
-          _missingRomajiCard(visible),
+          if (_unit.hasIdentification) _unidentifiedNotice(targets.length - identified),
+          if (_unit.hasData) _missingRomajiCard(visible),
           const SizedBox(height: 12),
           Text('対象の標本 ${targets.length}件', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
@@ -69,13 +74,29 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: FilledButton.icon(
-            onPressed: targets.isEmpty || _working ? null : () => _create(targets),
+            onPressed: labelCount == 0 || _working ? null : () => _create(targets),
             icon: _working
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.picture_as_pdf),
-            label: Text('PDFを作成(${targets.length * 2}枚・$pagesページ)'),
+            label: Text('PDFを作成($labelCount枚・$pagesページ)'),
           ),
         ),
+      ),
+    );
+  }
+
+  /// 出力するラベルの枚数。データとコレクションは標本ごとに1枚ずつ、同定ラベルは同定した標本だけ。
+  int _labelCount(int targets, int identified) =>
+      (_unit.hasData ? targets : 0) + (_unit.hasCollection ? targets : 0) + (_unit.hasIdentification ? identified : 0);
+
+  /// 未同定の標本には、同定ラベルを出さない。除く件数を知らせる(要件定義 S-07)。
+  Widget _unidentifiedNotice(int count) {
+    if (count == 0) return const SizedBox.shrink();
+    return Card(
+      color: warningColor.withValues(alpha: 0.08),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text('未同定の標本 $count件には、同定ラベルを出しません', style: const TextStyle(color: warningColor)),
       ),
     );
   }
@@ -87,7 +108,13 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('印刷単位: データ+コレクション(同定ラベルは段階3で対応)'),
+            const Text('印刷単位'),
+            const SizedBox(height: 4),
+            SegmentedButton<LabelUnit>(
+              segments: [for (final u in LabelUnit.values) ButtonSegment(value: u, label: Text(u.label))],
+              selected: {_unit},
+              onSelectionChanged: (s) => setState(() => _unit = s.first),
+            ),
             const SizedBox(height: 8),
             SegmentedButton<LabelArrangement>(
               segments: const [
@@ -100,8 +127,9 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('未印刷のみ'),
+              subtitle: _unit == LabelUnit.identificationOnly ? const Text('同定ラベルだけのときは、印刷状態で絞りません') : null,
               value: _unprintedOnly,
-              onChanged: (v) => setState(() => _unprintedOnly = v),
+              onChanged: _unit == LabelUnit.identificationOnly ? null : (v) => setState(() => _unprintedOnly = v),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -225,8 +253,8 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
   }
 
   Future<void> _createInner(List<LabelCandidate> targets) async {
-    // 1. 補完待ちのまま印刷するか(要件定義 第13章)
-    final pending = targets.where((c) => c.pendingEnrichment).length;
+    // 1. 補完待ちのまま印刷するか(要件定義 第13章)。標高・地名はデータラベルのことなので、同定ラベルだけなら聞かない
+    final pending = _unit.hasData ? targets.where((c) => c.pendingEnrichment).length : 0;
     if (pending > 0) {
       final choice = await _ask(
         '標高・地名が未取得の標本が$pending件あります',
@@ -242,7 +270,7 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
     }
 
     // 2. 大字のローマ字が未入力の地点があれば、先に入力するか確認する
-    final missing = _localitiesMissingRomaji(targets);
+    final missing = _unit.hasData ? _localitiesMissingRomaji(targets) : <Locality>[];
     if (missing.isNotEmpty) {
       final choice = await _ask(
         '大字のローマ字が未入力の地点が${missing.length}件あります',
@@ -268,7 +296,7 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
     final layouts = {for (final c in targets) c.specimen.id: layoutOf(c)};
 
     // 3. 日本語の地名を省くラベルがあれば、省いてよいか確認する(要件定義 第5章)
-    final omitted = [for (final c in targets) if (layouts[c.specimen.id]!.japaneseOmitted) c];
+    final omitted = _unit.hasData ? [for (final c in targets) if (layouts[c.specimen.id]!.japaneseOmitted) c] : <LabelCandidate>[];
     if (omitted.isNotEmpty) {
       final choice = await _ask(
         '日本語の地名を省くラベルが${omitted.length}件あります',
@@ -286,7 +314,13 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
       }
     }
 
-    // 4. PDF を作り、プレビューを開く
+    // 4. PDF を作り、プレビューを開く。同定ラベルは、同定した標本の分だけ作る
+    final identificationLayouts = {
+      if (_unit.hasIdentification)
+        for (final c in targets)
+          if (c.identificationSource case final source?)
+            c.specimen.id: layoutIdentificationLabel(source, measurer: fonts.measurer),
+    };
     final labels = arrangeLabels(
       [
         for (final c in targets)
@@ -294,19 +328,27 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
             specimenId: c.specimen.id,
             catalogText: c.specimen.catalogText,
             dataLabel: layouts[c.specimen.id]!,
+            identificationLabel: identificationLayouts[c.specimen.id],
           ),
       ],
       _arrangement,
+      unit: _unit,
     );
     final bytes = await buildLabelPdf(labels: labels, fonts: fonts, cutLines: _cutLines);
-    final overflowing = [for (final c in targets) if (layouts[c.specimen.id]!.overflows) c.specimen.catalogText];
+    final overflowing = [
+      if (_unit.hasData)
+        for (final c in targets)
+          if (layouts[c.specimen.id]!.overflows) c.specimen.catalogText,
+      for (final c in targets)
+        if (identificationLayouts[c.specimen.id]?.overflows ?? false) '${c.specimen.catalogText}(同定)',
+    ];
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => _PreviewScreen(bytes: bytes, overflowing: overflowing)),
     );
 
-    // 5. 印刷済みにするか(「はい」のときだけ記録する)
-    if (!mounted) return;
+    // 5. 印刷済みにするか(「はい」のときだけ記録する)。印刷済みは、データ・コレクションの印刷状態なので、同定ラベルだけのときは聞かない
+    if (!mounted || !_unit.hasData) return;
     final mark = await _ask(
       '印刷済みにしますか',
       '${targets.length}件の標本を印刷済みとして記録します。',

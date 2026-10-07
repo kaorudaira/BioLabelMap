@@ -5,17 +5,31 @@ import '../domain/elevation_rounding.dart';
 import '../domain/label/collector_name_format.dart';
 import '../domain/label/data_label_builder.dart';
 import '../domain/label/data_label_layout.dart';
+import '../domain/label/identification_label.dart';
 import '../domain/models/collection_period.dart';
 import '../domain/status.dart';
 import 'locality_lookup_service.dart';
+import 'specimen_service.dart' show speciesNameOf;
 
 /// ラベル出力の候補になる標本1件(標本・採集・地点をまとめたもの)。
 class LabelCandidate {
-  const LabelCandidate(this.specimen, this.event, this.locality);
+  const LabelCandidate(this.specimen, this.event, this.locality, [this.identification]);
 
   final Specimen specimen;
   final CollectionEvent event;
   final Locality locality;
+
+  /// 最新の同定。未同定なら null。
+  final Identification? identification;
+
+  /// 同定ラベルの材料。種名(和名か学名)が無い、未同定の標本は null。
+  IdentificationLabelSource? get identificationSource {
+    final source = IdentificationLabelSource(
+      name: speciesNameOf(identification),
+      identifiedBy: identification?.identifiedBy,
+    );
+    return source.isLabelable ? source : null;
+  }
 
   bool get printed => specimen.printedAt != null;
 
@@ -61,7 +75,15 @@ class LabelService {
   final AppDatabase _db;
 
   /// ごみ箱を除く標本を、標本番号順に返す。DB が変わるたびに流れ直す。
-  Stream<List<LabelCandidate>> watchCandidates() {
+  Stream<List<LabelCandidate>> watchCandidates() => _db
+      .customSelect(
+        'SELECT 1',
+        readsFrom: {_db.specimens, _db.collectionEvents, _db.localities, _db.identifications},
+      )
+      .watch()
+      .asyncMap((_) => _load());
+
+  Future<List<LabelCandidate>> _load() async {
     final query = _db.select(_db.specimens).join([
       innerJoin(_db.collectionEvents, _db.collectionEvents.id.equalsExp(_db.specimens.collectionEventId)),
       innerJoin(_db.localities, _db.localities.id.equalsExp(_db.collectionEvents.localityId)),
@@ -69,16 +91,23 @@ class LabelService {
       ..where(_db.specimens.deletedAt.isNull())
       ..orderBy([OrderingTerm.asc(_db.specimens.catalogNumber)]);
     // ↑ join は SQL の JOIN。readTable で各テーブルの行を取り出す(JPA の Tuple に近い)
-    return query.watch().map(
-      (rows) => [
-        for (final row in rows)
-          LabelCandidate(
-            row.readTable(_db.specimens),
-            row.readTable(_db.collectionEvents),
-            row.readTable(_db.localities),
-          ),
-      ],
-    );
+    final rows = await query.get();
+
+    // 同定ラベルには、標本ごとの最新の同定を使う(id の大きい順に読み、最初の1件を取る)
+    final latest = <int, Identification>{};
+    final ids = await (_db.select(_db.identifications)..orderBy([(i) => OrderingTerm.desc(i.id)])).get();
+    for (final i in ids) {
+      latest.putIfAbsent(i.specimenId, () => i);
+    }
+    return [
+      for (final row in rows)
+        LabelCandidate(
+          row.readTable(_db.specimens),
+          row.readTable(_db.collectionEvents),
+          row.readTable(_db.localities),
+          latest[row.readTable(_db.specimens).id],
+        ),
+    ];
   }
 
   /// 大字のローマ字を入れる。辞書にも溜め、同じ大字でローマ字が未入力の
