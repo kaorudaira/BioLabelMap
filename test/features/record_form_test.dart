@@ -63,6 +63,18 @@ void main() {
     expect(next.remarks, '');
   });
 
+  test('位置を補正すると、手動になり、精度・標高・地名を取り直す', () {
+    final form = filled()..correctPosition(36.9, 139.2);
+    expect(form.latitude, 36.9);
+    expect(form.longitude, 139.2);
+    expect(form.isManualPosition, isTrue);
+    expect(form.accuracyMeters, isNull);
+    expect(form.elevationMeters, isNull);
+    expect(form.place, isNull);
+    final position = form.toInput().position as NewPosition;
+    expect(position.isManual, isTrue);
+  });
+
   test('1日のみのときは、終了日を使わない', () {
     final form = RecordForm.at(latitude: 36.9, longitude: 139.2, now: DateTime(2026, 6, 20, 9));
     expect(form.period.toIso(), '2026-06-20');

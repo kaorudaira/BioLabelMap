@@ -9,12 +9,14 @@ import '../core/gsi/gsi_api.dart';
 import '../core/gsi/municipality_directory.dart';
 import '../core/gsi/oaza_romaji_table.dart';
 import '../core/label/label_pdf.dart';
+import '../core/tiles/offline_tile_store.dart';
 import 'backup_service.dart';
 import 'draft_service.dart';
 import 'enrichment_service.dart';
 import 'label_service.dart';
 import 'locality_lookup_service.dart';
 import 'map_query_service.dart';
+import 'offline_map_service.dart';
 import 'record_service.dart';
 import 'settings_service.dart';
 
@@ -137,3 +139,20 @@ final enrichmentSchedulerProvider = Provider((ref) {
   ref.onDispose(scheduler.dispose);
   return scheduler;
 });
+
+// ---- オフライン地図(S-08) ----
+
+/// タイルを置く場所。アプリ起動時に端末のフォルダを決めて差し替える(main.dart で override する)。
+final offlineTileStoreProvider = Provider<OfflineTileStore>(
+  (ref) => throw UnimplementedError('起動時に override してください'),
+);
+
+final offlineMapServiceProvider = Provider((ref) {
+  final client = http.Client();
+  ref.onDispose(client.close);
+  return OfflineMapService(ref.watch(databaseProvider), ref.watch(offlineTileStoreProvider), client);
+});
+
+final offlineAreasProvider = StreamProvider<List<OfflineArea>>(
+  (ref) => ref.watch(offlineMapServiceProvider).watchAll(),
+);

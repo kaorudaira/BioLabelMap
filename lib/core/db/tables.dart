@@ -208,3 +208,29 @@ class PlaceRomajiDict extends Table {
     {municipalityCode, localityJa},
   ];
 }
+
+/// 保存済みのオフライン地図(要件定義 第7章・S-08)。タイル本体は端末のファイルに置く。
+@DataClassName('OfflineArea')
+class OfflineAreas extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  RealColumn get south => real()();
+  RealColumn get west => real()();
+  RealColumn get north => real()();
+  RealColumn get east => real()();
+
+  /// 保存する地図の種類。GsiTileLayer の名前をカンマでつなぐ。
+  TextColumn get layers => text()();
+  IntColumn get minZoom => integer()();
+  IntColumn get maxZoom => integer()();
+
+  /// 保存すべき枚数(全ての種類の合計)と、保存できた枚数・容量。
+  IntColumn get tileCount => integer()();
+  IntColumn get downloadedCount => integer().withDefault(const Constant(0))();
+  IntColumn get bytes => integer().withDefault(const Constant(0))();
+
+  /// 'downloading'(取得中・中断中)か 'complete'(完了)。
+  TextColumn get status => text().withDefault(const Constant('downloading'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get completedAt => dateTime().nullable()();
+}

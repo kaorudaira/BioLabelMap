@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../app/theme.dart';
 import '../../core/db/database.dart';
@@ -18,6 +19,7 @@ import '../../services/record_service.dart';
 import '../../services/service_providers.dart';
 import 'form_block.dart';
 import 'macron_buttons.dart';
+import 'position_picker_screen.dart';
 import 'romaji_candidate.dart';
 import 'record_form.dart';
 
@@ -105,6 +107,22 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
       _form.place = result.place;
       _localityEn.text = result.place?.localityEn ?? '';
     });
+  }
+
+  /// 座標をタップしたとき。小さな地図で位置を補正し、標高と地名を取り直す(圏外なら補完待ち)。
+  Future<void> _correctPosition() async {
+    final picked = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(
+        builder: (_) => PositionPickerScreen(initial: LatLng(_form.latitude, _form.longitude)),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _form.correctPosition(picked.latitude, picked.longitude);
+      _localityEn.text = '';
+      _dirty = true;
+    });
+    await _lookup();
   }
 
   void _edited(VoidCallback change) => setState(() {
@@ -270,7 +288,16 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
       color: BlockColors.location,
       title: existing != null ? '地点(既存の地点に追加)' : '地点',
       children: [
-        _row('座標', formatCoordinates(_form.latitude, _form.longitude)),
+        // 新しい地点のときだけ、座標をタップして位置を補正できる(既存の地点は動かさない)
+        InkWell(
+          onTap: existing == null ? _correctPosition : null,
+          child: Row(
+            children: [
+              Expanded(child: _row('座標', formatCoordinates(_form.latitude, _form.longitude))),
+              if (existing == null) const Icon(Icons.edit_location_alt, size: 20, color: Colors.black45),
+            ],
+          ),
+        ),
         _row(
           '精度',
           manual ? '手動' : (accuracy == null ? '不明' : '±${accuracy.round()} m'),

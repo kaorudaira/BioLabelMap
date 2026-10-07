@@ -5139,6 +5139,837 @@ class PlaceRomajiDictCompanion extends UpdateCompanion<PlaceRomajiEntry> {
   }
 }
 
+class $OfflineAreasTable extends OfflineAreas
+    with TableInfo<$OfflineAreasTable, OfflineArea> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OfflineAreasTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _southMeta = const VerificationMeta('south');
+  @override
+  late final GeneratedColumn<double> south = GeneratedColumn<double>(
+    'south',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _westMeta = const VerificationMeta('west');
+  @override
+  late final GeneratedColumn<double> west = GeneratedColumn<double>(
+    'west',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _northMeta = const VerificationMeta('north');
+  @override
+  late final GeneratedColumn<double> north = GeneratedColumn<double>(
+    'north',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _eastMeta = const VerificationMeta('east');
+  @override
+  late final GeneratedColumn<double> east = GeneratedColumn<double>(
+    'east',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _layersMeta = const VerificationMeta('layers');
+  @override
+  late final GeneratedColumn<String> layers = GeneratedColumn<String>(
+    'layers',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _minZoomMeta = const VerificationMeta(
+    'minZoom',
+  );
+  @override
+  late final GeneratedColumn<int> minZoom = GeneratedColumn<int>(
+    'min_zoom',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _maxZoomMeta = const VerificationMeta(
+    'maxZoom',
+  );
+  @override
+  late final GeneratedColumn<int> maxZoom = GeneratedColumn<int>(
+    'max_zoom',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tileCountMeta = const VerificationMeta(
+    'tileCount',
+  );
+  @override
+  late final GeneratedColumn<int> tileCount = GeneratedColumn<int>(
+    'tile_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _downloadedCountMeta = const VerificationMeta(
+    'downloadedCount',
+  );
+  @override
+  late final GeneratedColumn<int> downloadedCount = GeneratedColumn<int>(
+    'downloaded_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _bytesMeta = const VerificationMeta('bytes');
+  @override
+  late final GeneratedColumn<int> bytes = GeneratedColumn<int>(
+    'bytes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('downloading'),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> completedAt = GeneratedColumn<DateTime>(
+    'completed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    south,
+    west,
+    north,
+    east,
+    layers,
+    minZoom,
+    maxZoom,
+    tileCount,
+    downloadedCount,
+    bytes,
+    status,
+    createdAt,
+    completedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'offline_areas';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OfflineArea> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('south')) {
+      context.handle(
+        _southMeta,
+        south.isAcceptableOrUnknown(data['south']!, _southMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_southMeta);
+    }
+    if (data.containsKey('west')) {
+      context.handle(
+        _westMeta,
+        west.isAcceptableOrUnknown(data['west']!, _westMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_westMeta);
+    }
+    if (data.containsKey('north')) {
+      context.handle(
+        _northMeta,
+        north.isAcceptableOrUnknown(data['north']!, _northMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_northMeta);
+    }
+    if (data.containsKey('east')) {
+      context.handle(
+        _eastMeta,
+        east.isAcceptableOrUnknown(data['east']!, _eastMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eastMeta);
+    }
+    if (data.containsKey('layers')) {
+      context.handle(
+        _layersMeta,
+        layers.isAcceptableOrUnknown(data['layers']!, _layersMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_layersMeta);
+    }
+    if (data.containsKey('min_zoom')) {
+      context.handle(
+        _minZoomMeta,
+        minZoom.isAcceptableOrUnknown(data['min_zoom']!, _minZoomMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_minZoomMeta);
+    }
+    if (data.containsKey('max_zoom')) {
+      context.handle(
+        _maxZoomMeta,
+        maxZoom.isAcceptableOrUnknown(data['max_zoom']!, _maxZoomMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_maxZoomMeta);
+    }
+    if (data.containsKey('tile_count')) {
+      context.handle(
+        _tileCountMeta,
+        tileCount.isAcceptableOrUnknown(data['tile_count']!, _tileCountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tileCountMeta);
+    }
+    if (data.containsKey('downloaded_count')) {
+      context.handle(
+        _downloadedCountMeta,
+        downloadedCount.isAcceptableOrUnknown(
+          data['downloaded_count']!,
+          _downloadedCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('bytes')) {
+      context.handle(
+        _bytesMeta,
+        bytes.isAcceptableOrUnknown(data['bytes']!, _bytesMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OfflineArea map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OfflineArea(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      south: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}south'],
+      )!,
+      west: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}west'],
+      )!,
+      north: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}north'],
+      )!,
+      east: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}east'],
+      )!,
+      layers: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}layers'],
+      )!,
+      minZoom: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}min_zoom'],
+      )!,
+      maxZoom: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}max_zoom'],
+      )!,
+      tileCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tile_count'],
+      )!,
+      downloadedCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}downloaded_count'],
+      )!,
+      bytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}bytes'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}completed_at'],
+      ),
+    );
+  }
+
+  @override
+  $OfflineAreasTable createAlias(String alias) {
+    return $OfflineAreasTable(attachedDatabase, alias);
+  }
+}
+
+class OfflineArea extends DataClass implements Insertable<OfflineArea> {
+  final int id;
+  final String name;
+  final double south;
+  final double west;
+  final double north;
+  final double east;
+
+  /// 保存する地図の種類。GsiTileLayer の名前をカンマでつなぐ。
+  final String layers;
+  final int minZoom;
+  final int maxZoom;
+
+  /// 保存すべき枚数(全ての種類の合計)と、保存できた枚数・容量。
+  final int tileCount;
+  final int downloadedCount;
+  final int bytes;
+
+  /// 'downloading'(取得中・中断中)か 'complete'(完了)。
+  final String status;
+  final DateTime createdAt;
+  final DateTime? completedAt;
+  const OfflineArea({
+    required this.id,
+    required this.name,
+    required this.south,
+    required this.west,
+    required this.north,
+    required this.east,
+    required this.layers,
+    required this.minZoom,
+    required this.maxZoom,
+    required this.tileCount,
+    required this.downloadedCount,
+    required this.bytes,
+    required this.status,
+    required this.createdAt,
+    this.completedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['south'] = Variable<double>(south);
+    map['west'] = Variable<double>(west);
+    map['north'] = Variable<double>(north);
+    map['east'] = Variable<double>(east);
+    map['layers'] = Variable<String>(layers);
+    map['min_zoom'] = Variable<int>(minZoom);
+    map['max_zoom'] = Variable<int>(maxZoom);
+    map['tile_count'] = Variable<int>(tileCount);
+    map['downloaded_count'] = Variable<int>(downloadedCount);
+    map['bytes'] = Variable<int>(bytes);
+    map['status'] = Variable<String>(status);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || completedAt != null) {
+      map['completed_at'] = Variable<DateTime>(completedAt);
+    }
+    return map;
+  }
+
+  OfflineAreasCompanion toCompanion(bool nullToAbsent) {
+    return OfflineAreasCompanion(
+      id: Value(id),
+      name: Value(name),
+      south: Value(south),
+      west: Value(west),
+      north: Value(north),
+      east: Value(east),
+      layers: Value(layers),
+      minZoom: Value(minZoom),
+      maxZoom: Value(maxZoom),
+      tileCount: Value(tileCount),
+      downloadedCount: Value(downloadedCount),
+      bytes: Value(bytes),
+      status: Value(status),
+      createdAt: Value(createdAt),
+      completedAt: completedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAt),
+    );
+  }
+
+  factory OfflineArea.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OfflineArea(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      south: serializer.fromJson<double>(json['south']),
+      west: serializer.fromJson<double>(json['west']),
+      north: serializer.fromJson<double>(json['north']),
+      east: serializer.fromJson<double>(json['east']),
+      layers: serializer.fromJson<String>(json['layers']),
+      minZoom: serializer.fromJson<int>(json['minZoom']),
+      maxZoom: serializer.fromJson<int>(json['maxZoom']),
+      tileCount: serializer.fromJson<int>(json['tileCount']),
+      downloadedCount: serializer.fromJson<int>(json['downloadedCount']),
+      bytes: serializer.fromJson<int>(json['bytes']),
+      status: serializer.fromJson<String>(json['status']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'south': serializer.toJson<double>(south),
+      'west': serializer.toJson<double>(west),
+      'north': serializer.toJson<double>(north),
+      'east': serializer.toJson<double>(east),
+      'layers': serializer.toJson<String>(layers),
+      'minZoom': serializer.toJson<int>(minZoom),
+      'maxZoom': serializer.toJson<int>(maxZoom),
+      'tileCount': serializer.toJson<int>(tileCount),
+      'downloadedCount': serializer.toJson<int>(downloadedCount),
+      'bytes': serializer.toJson<int>(bytes),
+      'status': serializer.toJson<String>(status),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'completedAt': serializer.toJson<DateTime?>(completedAt),
+    };
+  }
+
+  OfflineArea copyWith({
+    int? id,
+    String? name,
+    double? south,
+    double? west,
+    double? north,
+    double? east,
+    String? layers,
+    int? minZoom,
+    int? maxZoom,
+    int? tileCount,
+    int? downloadedCount,
+    int? bytes,
+    String? status,
+    DateTime? createdAt,
+    Value<DateTime?> completedAt = const Value.absent(),
+  }) => OfflineArea(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    south: south ?? this.south,
+    west: west ?? this.west,
+    north: north ?? this.north,
+    east: east ?? this.east,
+    layers: layers ?? this.layers,
+    minZoom: minZoom ?? this.minZoom,
+    maxZoom: maxZoom ?? this.maxZoom,
+    tileCount: tileCount ?? this.tileCount,
+    downloadedCount: downloadedCount ?? this.downloadedCount,
+    bytes: bytes ?? this.bytes,
+    status: status ?? this.status,
+    createdAt: createdAt ?? this.createdAt,
+    completedAt: completedAt.present ? completedAt.value : this.completedAt,
+  );
+  OfflineArea copyWithCompanion(OfflineAreasCompanion data) {
+    return OfflineArea(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      south: data.south.present ? data.south.value : this.south,
+      west: data.west.present ? data.west.value : this.west,
+      north: data.north.present ? data.north.value : this.north,
+      east: data.east.present ? data.east.value : this.east,
+      layers: data.layers.present ? data.layers.value : this.layers,
+      minZoom: data.minZoom.present ? data.minZoom.value : this.minZoom,
+      maxZoom: data.maxZoom.present ? data.maxZoom.value : this.maxZoom,
+      tileCount: data.tileCount.present ? data.tileCount.value : this.tileCount,
+      downloadedCount: data.downloadedCount.present
+          ? data.downloadedCount.value
+          : this.downloadedCount,
+      bytes: data.bytes.present ? data.bytes.value : this.bytes,
+      status: data.status.present ? data.status.value : this.status,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OfflineArea(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('south: $south, ')
+          ..write('west: $west, ')
+          ..write('north: $north, ')
+          ..write('east: $east, ')
+          ..write('layers: $layers, ')
+          ..write('minZoom: $minZoom, ')
+          ..write('maxZoom: $maxZoom, ')
+          ..write('tileCount: $tileCount, ')
+          ..write('downloadedCount: $downloadedCount, ')
+          ..write('bytes: $bytes, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('completedAt: $completedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    south,
+    west,
+    north,
+    east,
+    layers,
+    minZoom,
+    maxZoom,
+    tileCount,
+    downloadedCount,
+    bytes,
+    status,
+    createdAt,
+    completedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OfflineArea &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.south == this.south &&
+          other.west == this.west &&
+          other.north == this.north &&
+          other.east == this.east &&
+          other.layers == this.layers &&
+          other.minZoom == this.minZoom &&
+          other.maxZoom == this.maxZoom &&
+          other.tileCount == this.tileCount &&
+          other.downloadedCount == this.downloadedCount &&
+          other.bytes == this.bytes &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt &&
+          other.completedAt == this.completedAt);
+}
+
+class OfflineAreasCompanion extends UpdateCompanion<OfflineArea> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<double> south;
+  final Value<double> west;
+  final Value<double> north;
+  final Value<double> east;
+  final Value<String> layers;
+  final Value<int> minZoom;
+  final Value<int> maxZoom;
+  final Value<int> tileCount;
+  final Value<int> downloadedCount;
+  final Value<int> bytes;
+  final Value<String> status;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> completedAt;
+  const OfflineAreasCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.south = const Value.absent(),
+    this.west = const Value.absent(),
+    this.north = const Value.absent(),
+    this.east = const Value.absent(),
+    this.layers = const Value.absent(),
+    this.minZoom = const Value.absent(),
+    this.maxZoom = const Value.absent(),
+    this.tileCount = const Value.absent(),
+    this.downloadedCount = const Value.absent(),
+    this.bytes = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.completedAt = const Value.absent(),
+  });
+  OfflineAreasCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required double south,
+    required double west,
+    required double north,
+    required double east,
+    required String layers,
+    required int minZoom,
+    required int maxZoom,
+    required int tileCount,
+    this.downloadedCount = const Value.absent(),
+    this.bytes = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.completedAt = const Value.absent(),
+  }) : name = Value(name),
+       south = Value(south),
+       west = Value(west),
+       north = Value(north),
+       east = Value(east),
+       layers = Value(layers),
+       minZoom = Value(minZoom),
+       maxZoom = Value(maxZoom),
+       tileCount = Value(tileCount);
+  static Insertable<OfflineArea> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<double>? south,
+    Expression<double>? west,
+    Expression<double>? north,
+    Expression<double>? east,
+    Expression<String>? layers,
+    Expression<int>? minZoom,
+    Expression<int>? maxZoom,
+    Expression<int>? tileCount,
+    Expression<int>? downloadedCount,
+    Expression<int>? bytes,
+    Expression<String>? status,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? completedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (south != null) 'south': south,
+      if (west != null) 'west': west,
+      if (north != null) 'north': north,
+      if (east != null) 'east': east,
+      if (layers != null) 'layers': layers,
+      if (minZoom != null) 'min_zoom': minZoom,
+      if (maxZoom != null) 'max_zoom': maxZoom,
+      if (tileCount != null) 'tile_count': tileCount,
+      if (downloadedCount != null) 'downloaded_count': downloadedCount,
+      if (bytes != null) 'bytes': bytes,
+      if (status != null) 'status': status,
+      if (createdAt != null) 'created_at': createdAt,
+      if (completedAt != null) 'completed_at': completedAt,
+    });
+  }
+
+  OfflineAreasCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<double>? south,
+    Value<double>? west,
+    Value<double>? north,
+    Value<double>? east,
+    Value<String>? layers,
+    Value<int>? minZoom,
+    Value<int>? maxZoom,
+    Value<int>? tileCount,
+    Value<int>? downloadedCount,
+    Value<int>? bytes,
+    Value<String>? status,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? completedAt,
+  }) {
+    return OfflineAreasCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      south: south ?? this.south,
+      west: west ?? this.west,
+      north: north ?? this.north,
+      east: east ?? this.east,
+      layers: layers ?? this.layers,
+      minZoom: minZoom ?? this.minZoom,
+      maxZoom: maxZoom ?? this.maxZoom,
+      tileCount: tileCount ?? this.tileCount,
+      downloadedCount: downloadedCount ?? this.downloadedCount,
+      bytes: bytes ?? this.bytes,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      completedAt: completedAt ?? this.completedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (south.present) {
+      map['south'] = Variable<double>(south.value);
+    }
+    if (west.present) {
+      map['west'] = Variable<double>(west.value);
+    }
+    if (north.present) {
+      map['north'] = Variable<double>(north.value);
+    }
+    if (east.present) {
+      map['east'] = Variable<double>(east.value);
+    }
+    if (layers.present) {
+      map['layers'] = Variable<String>(layers.value);
+    }
+    if (minZoom.present) {
+      map['min_zoom'] = Variable<int>(minZoom.value);
+    }
+    if (maxZoom.present) {
+      map['max_zoom'] = Variable<int>(maxZoom.value);
+    }
+    if (tileCount.present) {
+      map['tile_count'] = Variable<int>(tileCount.value);
+    }
+    if (downloadedCount.present) {
+      map['downloaded_count'] = Variable<int>(downloadedCount.value);
+    }
+    if (bytes.present) {
+      map['bytes'] = Variable<int>(bytes.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<DateTime>(completedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OfflineAreasCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('south: $south, ')
+          ..write('west: $west, ')
+          ..write('north: $north, ')
+          ..write('east: $east, ')
+          ..write('layers: $layers, ')
+          ..write('minZoom: $minZoom, ')
+          ..write('maxZoom: $maxZoom, ')
+          ..write('tileCount: $tileCount, ')
+          ..write('downloadedCount: $downloadedCount, ')
+          ..write('bytes: $bytes, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('completedAt: $completedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5158,6 +5989,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PlaceRomajiDictTable placeRomajiDict = $PlaceRomajiDictTable(
     this,
   );
+  late final $OfflineAreasTable offlineAreas = $OfflineAreasTable(this);
   late final Index idxLocalitiesKey = Index(
     'idx_localities_key',
     'CREATE INDEX idx_localities_key ON localities (lat_e4, lon_e4)',
@@ -5175,6 +6007,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     drafts,
     appSettings,
     placeRomajiDict,
+    offlineAreas,
     idxLocalitiesKey,
   ];
 }
@@ -8500,6 +9333,403 @@ typedef $$PlaceRomajiDictTableProcessedTableManager =
       PlaceRomajiEntry,
       PrefetchHooks Function()
     >;
+typedef $$OfflineAreasTableCreateCompanionBuilder =
+    OfflineAreasCompanion Function({
+      Value<int> id,
+      required String name,
+      required double south,
+      required double west,
+      required double north,
+      required double east,
+      required String layers,
+      required int minZoom,
+      required int maxZoom,
+      required int tileCount,
+      Value<int> downloadedCount,
+      Value<int> bytes,
+      Value<String> status,
+      Value<DateTime> createdAt,
+      Value<DateTime?> completedAt,
+    });
+typedef $$OfflineAreasTableUpdateCompanionBuilder =
+    OfflineAreasCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<double> south,
+      Value<double> west,
+      Value<double> north,
+      Value<double> east,
+      Value<String> layers,
+      Value<int> minZoom,
+      Value<int> maxZoom,
+      Value<int> tileCount,
+      Value<int> downloadedCount,
+      Value<int> bytes,
+      Value<String> status,
+      Value<DateTime> createdAt,
+      Value<DateTime?> completedAt,
+    });
+
+class $$OfflineAreasTableFilterComposer
+    extends Composer<_$AppDatabase, $OfflineAreasTable> {
+  $$OfflineAreasTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get south => $composableBuilder(
+    column: $table.south,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get west => $composableBuilder(
+    column: $table.west,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get north => $composableBuilder(
+    column: $table.north,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get east => $composableBuilder(
+    column: $table.east,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get layers => $composableBuilder(
+    column: $table.layers,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get minZoom => $composableBuilder(
+    column: $table.minZoom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get maxZoom => $composableBuilder(
+    column: $table.maxZoom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get tileCount => $composableBuilder(
+    column: $table.tileCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get downloadedCount => $composableBuilder(
+    column: $table.downloadedCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get bytes => $composableBuilder(
+    column: $table.bytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OfflineAreasTableOrderingComposer
+    extends Composer<_$AppDatabase, $OfflineAreasTable> {
+  $$OfflineAreasTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get south => $composableBuilder(
+    column: $table.south,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get west => $composableBuilder(
+    column: $table.west,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get north => $composableBuilder(
+    column: $table.north,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get east => $composableBuilder(
+    column: $table.east,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get layers => $composableBuilder(
+    column: $table.layers,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get minZoom => $composableBuilder(
+    column: $table.minZoom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get maxZoom => $composableBuilder(
+    column: $table.maxZoom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get tileCount => $composableBuilder(
+    column: $table.tileCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get downloadedCount => $composableBuilder(
+    column: $table.downloadedCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get bytes => $composableBuilder(
+    column: $table.bytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OfflineAreasTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OfflineAreasTable> {
+  $$OfflineAreasTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<double> get south =>
+      $composableBuilder(column: $table.south, builder: (column) => column);
+
+  GeneratedColumn<double> get west =>
+      $composableBuilder(column: $table.west, builder: (column) => column);
+
+  GeneratedColumn<double> get north =>
+      $composableBuilder(column: $table.north, builder: (column) => column);
+
+  GeneratedColumn<double> get east =>
+      $composableBuilder(column: $table.east, builder: (column) => column);
+
+  GeneratedColumn<String> get layers =>
+      $composableBuilder(column: $table.layers, builder: (column) => column);
+
+  GeneratedColumn<int> get minZoom =>
+      $composableBuilder(column: $table.minZoom, builder: (column) => column);
+
+  GeneratedColumn<int> get maxZoom =>
+      $composableBuilder(column: $table.maxZoom, builder: (column) => column);
+
+  GeneratedColumn<int> get tileCount =>
+      $composableBuilder(column: $table.tileCount, builder: (column) => column);
+
+  GeneratedColumn<int> get downloadedCount => $composableBuilder(
+    column: $table.downloadedCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get bytes =>
+      $composableBuilder(column: $table.bytes, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$OfflineAreasTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OfflineAreasTable,
+          OfflineArea,
+          $$OfflineAreasTableFilterComposer,
+          $$OfflineAreasTableOrderingComposer,
+          $$OfflineAreasTableAnnotationComposer,
+          $$OfflineAreasTableCreateCompanionBuilder,
+          $$OfflineAreasTableUpdateCompanionBuilder,
+          (
+            OfflineArea,
+            BaseReferences<_$AppDatabase, $OfflineAreasTable, OfflineArea>,
+          ),
+          OfflineArea,
+          PrefetchHooks Function()
+        > {
+  $$OfflineAreasTableTableManager(_$AppDatabase db, $OfflineAreasTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OfflineAreasTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OfflineAreasTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OfflineAreasTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<double> south = const Value.absent(),
+                Value<double> west = const Value.absent(),
+                Value<double> north = const Value.absent(),
+                Value<double> east = const Value.absent(),
+                Value<String> layers = const Value.absent(),
+                Value<int> minZoom = const Value.absent(),
+                Value<int> maxZoom = const Value.absent(),
+                Value<int> tileCount = const Value.absent(),
+                Value<int> downloadedCount = const Value.absent(),
+                Value<int> bytes = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> completedAt = const Value.absent(),
+              }) => OfflineAreasCompanion(
+                id: id,
+                name: name,
+                south: south,
+                west: west,
+                north: north,
+                east: east,
+                layers: layers,
+                minZoom: minZoom,
+                maxZoom: maxZoom,
+                tileCount: tileCount,
+                downloadedCount: downloadedCount,
+                bytes: bytes,
+                status: status,
+                createdAt: createdAt,
+                completedAt: completedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required double south,
+                required double west,
+                required double north,
+                required double east,
+                required String layers,
+                required int minZoom,
+                required int maxZoom,
+                required int tileCount,
+                Value<int> downloadedCount = const Value.absent(),
+                Value<int> bytes = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> completedAt = const Value.absent(),
+              }) => OfflineAreasCompanion.insert(
+                id: id,
+                name: name,
+                south: south,
+                west: west,
+                north: north,
+                east: east,
+                layers: layers,
+                minZoom: minZoom,
+                maxZoom: maxZoom,
+                tileCount: tileCount,
+                downloadedCount: downloadedCount,
+                bytes: bytes,
+                status: status,
+                createdAt: createdAt,
+                completedAt: completedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$OfflineAreasTable, OfflineArea>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $OfflineAreasTable,
+                    OfflineArea
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OfflineAreasTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OfflineAreasTable,
+      OfflineArea,
+      $$OfflineAreasTableFilterComposer,
+      $$OfflineAreasTableOrderingComposer,
+      $$OfflineAreasTableAnnotationComposer,
+      $$OfflineAreasTableCreateCompanionBuilder,
+      $$OfflineAreasTableUpdateCompanionBuilder,
+      (
+        OfflineArea,
+        BaseReferences<_$AppDatabase, $OfflineAreasTable, OfflineArea>,
+      ),
+      OfflineArea,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8520,4 +9750,6 @@ class $AppDatabaseManager {
       $$AppSettingsTableTableManager(_db, _db.appSettings);
   $$PlaceRomajiDictTableTableManager get placeRomajiDict =>
       $$PlaceRomajiDictTableTableManager(_db, _db.placeRomajiDict);
+  $$OfflineAreasTableTableManager get offlineAreas =>
+      $$OfflineAreasTableTableManager(_db, _db.offlineAreas);
 }

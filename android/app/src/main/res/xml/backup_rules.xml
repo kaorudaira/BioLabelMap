@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- オフライン地図のタイル(最大1GB)は、自動バックアップに含めない(再取得できる) -->
+<full-backup-content>
+    <exclude domain="file" path="offline_tiles" />
+</full-backup-content>

@@ -22,6 +22,7 @@ part 'database.g.dart';
     Drafts,
     AppSettings,
     PlaceRomajiDict,
+    OfflineAreas,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -32,7 +33,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.open() => AppDatabase(driftDatabase(name: 'biolabelmap'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -45,6 +46,10 @@ class AppDatabase extends _$AppDatabase {
       // 1 → 2: 最後にバックアップした日時
       if (from < 2) {
         await m.addColumn(appSettings, appSettings.lastBackupAt);
+      }
+      // 2 → 3: オフライン地図
+      if (from < 3) {
+        await m.createTable(offlineAreas);
       }
     },
     beforeOpen: (details) async {

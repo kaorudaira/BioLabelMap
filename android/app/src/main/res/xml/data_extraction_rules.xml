@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12 以降。バックアップと端末間の移行の両方から、オフライン地図のタイルを除く -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="offline_tiles" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="offline_tiles" />
+    </device-transfer>
+</data-extraction-rules>
