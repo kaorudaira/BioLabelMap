@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show compute;
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
@@ -11,6 +13,7 @@ import '../core/gsi/oaza_romaji_table.dart';
 import '../core/label/label_pdf.dart';
 import '../core/tiles/offline_tile_store.dart';
 import '../domain/specimen_list.dart';
+import '../domain/species_catalog.dart';
 import 'backup_service.dart';
 import 'dictionary_service.dart';
 import 'draft_service.dart';
@@ -65,6 +68,13 @@ final dictionaryServiceProvider = Provider(
 final identificationServiceProvider = Provider(
   (ref) => IdentificationService(ref.watch(databaseProvider), ref.watch(dictionaryServiceProvider)),
 );
+
+/// 甲虫の和名・学名の目録(同定入力の自動入力に使う)。同梱の CSV を、初めて使うときに読み込む。
+/// 約1.2MB で、読み込みに0.2秒ほどかかるので、別のスレッドで読む。
+final speciesCatalogProvider = FutureProvider<SpeciesCatalog>((ref) async {
+  final csv = await rootBundle.loadString('assets/data/beetles_master.csv');
+  return compute(parseCatalogCsv, csv);
+});
 
 final gsiApiProvider = Provider((ref) {
   final client = http.Client();

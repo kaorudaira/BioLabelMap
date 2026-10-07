@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../domain/models/calendar_date.dart';
+import '../../domain/species_catalog.dart';
 import '../../domain/species_name.dart';
 import '../../domain/status.dart';
 import '../../services/identification_service.dart';
@@ -53,15 +54,20 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
   var _active = _Field.species;
 
   /// 種名の欄に打った文字から引いた、辞書の候補。
-  var _candidates = const <SpeciesName>[];
+  var _candidates = const <_Candidate>[];
   var _generation = 0;
 
   var _date = CalendarDate.fromDateTime(DateTime.now());
   var _confirmed = false;
   var _saving = false;
 
-  /// 候補を入れている間は、入力の変化で候補を引き直さない。
+  /// 候補や目録の自動入力で文字を入れている間は、入力の変化で候補や自動入力をやり直さない。
   var _picking = false;
+  var _autofilling = false;
+
+  /// 目録から自動入力した種。同じ種に一致し続けている間は、消した欄を入れ直さない。
+  CatalogEntry? _autoFilled;
+  String? _autoFillNote;
 
   static const _nameFields = [_Field.vernacular, _Field.genus, _Field.species, _Field.subspecies];
 
@@ -69,9 +75,14 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
   void initState() {
     super.initState();
     _loadDefaultIdentifier();
+    // 目録は大きいので、画面を開いたときから読み込んでおく
+    ref.read(speciesCatalogProvider.future).ignore();
     for (final MapEntry(:key, :value) in _controllers.entries) {
       value.addListener(() {
-        if (!_picking && _nameFields.contains(key) && _focus[key]!.hasFocus) _refreshCandidates(value.text);
+        if (!_picking && !_autofilling && _nameFields.contains(key)) {
+          if (_focus[key]!.hasFocus) _refreshCandidates(value.text);
+          _autoFill();
+        }
         setState(() {});
       });
       _focus[key]!.addListener(() {
@@ -107,9 +118,50 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
 
   Future<void> _refreshCandidates(String query) async {
     final generation = ++_generation;
-    final found = await ref.read(dictionaryServiceProvider).suggestSpecies(query);
+    final fromDictionary = await ref.read(dictionaryServiceProvider).suggestSpecies(query);
     if (!mounted || generation != _generation) return;
-    setState(() => _candidates = found);
+    // 自分で使った種(辞書)を先に、目録の種をその後ろに並べる。同じ種名は1つにまとめる
+    final catalog = ref.read(speciesCatalogProvider).value ?? SpeciesCatalog.empty;
+    final found = <String, _Candidate>{
+      for (final n in fromDictionary) n.key: _Candidate(n, fromCatalog: false),
+    };
+    for (final e in catalog.search(query)) {
+      final n = e.toSpeciesName();
+      found.putIfAbsent(n.key, () => _Candidate(n, fromCatalog: true));
+    }
+    setState(() => _candidates = found.values.toList());
+  }
+
+  /// 入力した和名・学名が目録の1つの種に一致したら、空の欄を目録から埋める。
+  /// 入力済みの欄は書き換えない。
+  void _autoFill() {
+    final catalog = ref.read(speciesCatalogProvider).value;
+    if (catalog == null) return;
+    final match = catalog.uniqueMatch(_name);
+    if (match == null) {
+      _autoFilled = null;
+      _autoFillNote = null;
+      return;
+    }
+    if (identical(match, _autoFilled)) return;
+    _autoFilled = match;
+
+    final filled = <String>[];
+    void fill(TextEditingController c, String? value, String label) {
+      if (value != null && c.text.trim().isEmpty) {
+        c.text = value;
+        filled.add(label);
+      }
+    }
+
+    _autofilling = true;
+    fill(_vernacular, match.vernacular, '和名');
+    fill(_genus, match.genus, '属');
+    fill(_species, match.species, '種');
+    fill(_subspecies, match.subspecies, '亜種');
+    fill(_authorship, match.authorship, '命名者・年');
+    _autofilling = false;
+    _autoFillNote = filled.isEmpty ? null : '目録から入力しました: ${filled.join('・')}';
   }
 
   /// 候補を選ぶと、和名・学名・命名者・年がまとめて入る。
@@ -122,6 +174,9 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
     _subspecies.text = c.subspecies ?? '';
     _authorship.text = c.authorship ?? '';
     _picking = false;
+    // 選んだ種が目録の種と一致するなら、消した欄を勝手に入れ直さない
+    _autoFilled = ref.read(speciesCatalogProvider).value?.uniqueMatch(_name);
+    _autoFillNote = null;
     setState(() => _candidates = const []);
     FocusScope.of(context).unfocus();
   }
@@ -188,6 +243,14 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
                 padding: EdgeInsets.only(top: 4),
                 child: Text('括弧の有無は、入力したとおりラベルに載ります', style: TextStyle(fontSize: 12)),
               ),
+              if (_autoFillNote != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    _autoFillNote!,
+                    style: const TextStyle(fontSize: 12, color: BlockColors.identification, fontWeight: FontWeight.w600),
+                  ),
+                ),
               const SizedBox(height: 8),
               MacronButtons(controller: _controllers[_active]!, onInserted: () {}),
             ],
@@ -249,18 +312,27 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
-          child: Text('辞書の候補(選ぶとまとめて入ります)', style: TextStyle(fontSize: 12)),
+          child: Text('候補(選ぶとまとめて入ります)', style: TextStyle(fontSize: 12)),
         ),
         for (final c in _candidates)
           ListTile(
             dense: true,
-            title: Text(c.label),
-            subtitle: c.authorship == null ? null : Text(c.authorship!),
-            onTap: () => _pick(c),
+            title: Text(c.name.label),
+            subtitle: c.name.authorship == null ? null : Text(c.name.authorship!),
+            trailing: c.fromCatalog ? const Text('目録', style: TextStyle(fontSize: 12)) : null,
+            onTap: () => _pick(c.name),
           ),
       ],
     ),
   );
+}
+
+/// 種名の候補。辞書(自分が使った種)か、甲虫の目録から。
+class _Candidate {
+  const _Candidate(this.name, {required this.fromCatalog});
+
+  final SpeciesName name;
+  final bool fromCatalog;
 }
 
 enum _Field { vernacular, genus, species, subspecies, authorship, identifier }
