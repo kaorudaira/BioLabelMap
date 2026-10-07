@@ -52,8 +52,8 @@ void main() {
       expect(e.authorship, '(Kasahara, 1991)');
     });
 
-    test('基亜種の注記は和名から外し、ほかの亜種の注記は全角の空白でつないで残す', () {
-      expect(find('Coraebus', 'ignotus', 'ignotus').vernacular, 'カラカネナカボソタマムシ');
+    test('亜種の注記は、基亜種も含めて、全角の空白でつないで和名に残す', () {
+      expect(find('Coraebus', 'ignotus', 'ignotus').vernacular, 'カラカネナカボソタマムシ　基亜種');
       final other = find('Coraebus', 'ignotus', 'shibatai');
       expect(other.vernacular, 'カラカネナカボソタマムシ　奄美亜種');
       expect(other.vernacularBase, 'カラカネナカボソタマムシ');
