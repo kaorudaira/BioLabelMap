@@ -272,7 +272,8 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
     if (omitted.isNotEmpty) {
       final choice = await _ask(
         '日本語の地名を省くラベルが${omitted.length}件あります',
-        '文字を小さくしても収まらないため、日本語の地名を省きます。\n'
+        '${omitted.any((c) => layouts[c.specimen.id]!.japaneseOmittedForDate) ? '日付と採集者が1行に収まらない、または' : ''}'
+            '文字を小さくしても収まらないため、日本語の地名を省きます。\n'
             '${omitted.take(10).map((c) => c.specimen.catalogText).join('、')}'
             '${omitted.length > 10 ? ' ほか' : ''}',
         ['省いて印刷', '省かない(はみ出す)'],

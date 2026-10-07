@@ -162,6 +162,34 @@ void main() {
     });
   });
 
+  group('日付と採集者が幅に収まらないとき', () {
+    const date = DataLabelLine('30. V.-2. VI. 2026, K. YOSHIHARA', DataLabelLineRole.body);
+
+    test('日本語の地名を省く(確認が要る)', () {
+      // 3pt で 20文字ぶんの幅。日付と採集者は 31文字
+      final result = layout([date, japanese(['魚沼市', '下折立'])], specFor3ptChars(20));
+      expect(result.lines.any((l) => l.role == DataLabelLineRole.japanese), isFalse);
+      expect(result.japaneseOmittedForDate, isTrue);
+      expect(result.japaneseOmitted, isTrue);
+    });
+
+    test('省くことを断られたら、日本語の地名を残す', () {
+      final result = layout(
+        [date, japanese(['魚沼市', '下折立'])],
+        specFor3ptChars(20),
+        allowOmitJapanese: false,
+      );
+      expect(result.lines.any((l) => l.role == DataLabelLineRole.japanese), isTrue);
+      expect(result.japaneseOmittedForDate, isFalse);
+    });
+
+    test('収まるときは、日本語の地名を印字する', () {
+      final result = layout([date, japanese(['魚沼市', '下折立'])], specFor3ptChars(40));
+      expect(result.lines.any((l) => l.role == DataLabelLineRole.japanese), isTrue);
+      expect(result.japaneseOmittedForDate, isFalse);
+    });
+  });
+
   group('7行に収まらないとき', () {
     // 郡と市町村が改行され、全体が8行になる例
     List<DataLabelLine> eightLinesWhenWrapped() => List.of([
@@ -219,7 +247,8 @@ void main() {
     });
 
     test('日本語の地名を省いても収まらないなら、省かずに警告を立てる', () {
-      final result = layout(eightLinesWhenWrapped(), specFor3ptChars(10));
+      // 日付(12文字)は1行に入る幅にして、日付による省略と区別する
+      final result = layout(eightLinesWhenWrapped(), specFor3ptChars(12));
       expect(result.japaneseOmitted, isFalse);
       expect(result.overflows, isTrue);
     });

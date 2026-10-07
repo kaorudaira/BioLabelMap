@@ -11,6 +11,7 @@ import '../../domain/catalog_number.dart';
 import '../../domain/label/data_label_builder.dart';
 import '../../domain/label/date_range_format.dart';
 import '../../domain/models/calendar_date.dart';
+import '../../domain/macron_notice.dart';
 import '../../domain/sampling_method.dart';
 import '../../domain/status.dart';
 import '../../services/record_service.dart';
@@ -290,6 +291,18 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
         ),
         _row('地名', _lookingUp ? '取得中…' : (placeJa.isEmpty ? pending : placeJa)),
         if (placeEn.isNotEmpty) _row('', placeEn),
+        if (ambiguousMacronName(
+              countyEn: existing?.countyEn ?? _form.place?.countyEn,
+              municipalityEn: existing?.municipalityEn ?? _form.place?.municipalityEn,
+            )
+            case final name?)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              '$name の長音(ō)は、語の境目かもしれません。必要なら確かめてください',
+              style: const TextStyle(color: warningColor),
+            ),
+          ),
         // 大字のローマ字は手入力。辞書か公的データ(マクロンを含まないもの)にあれば自動で入る。
         // 公的データのマクロンを含む候補は、確かめてから「使う」で入れる
         if (existing == null && _form.place?.localityJa != null) ...[
