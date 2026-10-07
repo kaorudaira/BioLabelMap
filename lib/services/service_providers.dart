@@ -12,7 +12,9 @@ import '../core/label/label_pdf.dart';
 import '../core/tiles/offline_tile_store.dart';
 import '../domain/specimen_list.dart';
 import 'backup_service.dart';
+import 'dictionary_service.dart';
 import 'draft_service.dart';
+import 'identification_service.dart';
 import 'enrichment_service.dart';
 import 'label_service.dart';
 import 'locality_lookup_service.dart';
@@ -54,6 +56,14 @@ final labelFontsProvider = FutureProvider((ref) => LabelFonts.load());
 
 final specimenServiceProvider = Provider(
   (ref) => SpecimenService(ref.watch(databaseProvider)),
+);
+
+final dictionaryServiceProvider = Provider(
+  (ref) => DictionaryService(ref.watch(databaseProvider)),
+);
+
+final identificationServiceProvider = Provider(
+  (ref) => IdentificationService(ref.watch(databaseProvider), ref.watch(dictionaryServiceProvider)),
 );
 
 final gsiApiProvider = Provider((ref) {

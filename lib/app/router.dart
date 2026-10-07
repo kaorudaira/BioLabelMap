@@ -1,6 +1,8 @@
 import 'package:go_router/go_router.dart';
 
 import '../features/backup/backup_screen.dart';
+import '../features/dictionary/dictionary_screen.dart';
+import '../features/identification/identify_screen.dart';
 import '../features/label/label_screen.dart';
 import '../features/map/map_screen.dart';
 import '../features/offline/offline_area_new_screen.dart';
@@ -15,6 +17,11 @@ GoRouter buildRouter() => GoRouter(
   routes: [
     GoRoute(path: '/', builder: (context, state) => const MapScreen()),
     GoRoute(path: '/labels', builder: (context, state) => const LabelScreen()),
+    GoRoute(path: '/dictionary', builder: (context, state) => const DictionaryScreen()),
+    GoRoute(
+      path: '/identify',
+      builder: (context, state) => IdentifyScreen(args: state.extra! as IdentifyArgs),
+    ),
     GoRoute(path: '/specimens', builder: (context, state) => const SpecimenListScreen()),
     GoRoute(
       path: '/specimens/:id',

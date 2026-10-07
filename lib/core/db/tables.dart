@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../domain/elevation_rounding.dart';
+import '../../domain/dictionary.dart';
 import '../../domain/sampling_method.dart';
 import '../../domain/status.dart';
 import 'converters.dart';
@@ -233,4 +234,42 @@ class OfflineAreas extends Table {
   TextColumn get status => text().withDefault(const Constant('downloading'))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get completedAt => dateTime().nullable()();
+}
+
+/// 種の辞書。和名・属・種・亜種・命名者・年を1セットで持つ(要件定義 S-10)。
+/// 未入力の項目は空文字で持つ(一意制約で重複を防ぐため)。
+@DataClassName('SpeciesEntry')
+class SpeciesDict extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get vernacular => text().withDefault(const Constant(''))();
+  TextColumn get genus => text().withDefault(const Constant(''))();
+  TextColumn get species => text().withDefault(const Constant(''))();
+  TextColumn get subspecies => text().withDefault(const Constant(''))();
+  TextColumn get authorship => text().withDefault(const Constant(''))();
+
+  /// 候補の並び順に使う(よく使うものを上に出す)。
+  IntColumn get useCount => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {vernacular, genus, species, subspecies, authorship},
+  ];
+}
+
+/// 環境・寄主植物の辞書。文字列のみで、種別ごとに持つ(要件定義 S-10)。
+@DataClassName('TextDictEntry')
+class TextDict extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// `habitat`(環境)か `hostPlant`(寄主植物)。
+  TextColumn get kind => textEnum<DictTextKind>()();
+  TextColumn get value => text()();
+  IntColumn get useCount => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {kind, value},
+  ];
 }

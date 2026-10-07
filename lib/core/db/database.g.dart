@@ -5970,6 +5970,854 @@ class OfflineAreasCompanion extends UpdateCompanion<OfflineArea> {
   }
 }
 
+class $SpeciesDictTable extends SpeciesDict
+    with TableInfo<$SpeciesDictTable, SpeciesEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SpeciesDictTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _vernacularMeta = const VerificationMeta(
+    'vernacular',
+  );
+  @override
+  late final GeneratedColumn<String> vernacular = GeneratedColumn<String>(
+    'vernacular',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _genusMeta = const VerificationMeta('genus');
+  @override
+  late final GeneratedColumn<String> genus = GeneratedColumn<String>(
+    'genus',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _speciesMeta = const VerificationMeta(
+    'species',
+  );
+  @override
+  late final GeneratedColumn<String> species = GeneratedColumn<String>(
+    'species',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _subspeciesMeta = const VerificationMeta(
+    'subspecies',
+  );
+  @override
+  late final GeneratedColumn<String> subspecies = GeneratedColumn<String>(
+    'subspecies',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _authorshipMeta = const VerificationMeta(
+    'authorship',
+  );
+  @override
+  late final GeneratedColumn<String> authorship = GeneratedColumn<String>(
+    'authorship',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _useCountMeta = const VerificationMeta(
+    'useCount',
+  );
+  @override
+  late final GeneratedColumn<int> useCount = GeneratedColumn<int>(
+    'use_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    vernacular,
+    genus,
+    species,
+    subspecies,
+    authorship,
+    useCount,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'species_dict';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SpeciesEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('vernacular')) {
+      context.handle(
+        _vernacularMeta,
+        vernacular.isAcceptableOrUnknown(data['vernacular']!, _vernacularMeta),
+      );
+    }
+    if (data.containsKey('genus')) {
+      context.handle(
+        _genusMeta,
+        genus.isAcceptableOrUnknown(data['genus']!, _genusMeta),
+      );
+    }
+    if (data.containsKey('species')) {
+      context.handle(
+        _speciesMeta,
+        species.isAcceptableOrUnknown(data['species']!, _speciesMeta),
+      );
+    }
+    if (data.containsKey('subspecies')) {
+      context.handle(
+        _subspeciesMeta,
+        subspecies.isAcceptableOrUnknown(data['subspecies']!, _subspeciesMeta),
+      );
+    }
+    if (data.containsKey('authorship')) {
+      context.handle(
+        _authorshipMeta,
+        authorship.isAcceptableOrUnknown(data['authorship']!, _authorshipMeta),
+      );
+    }
+    if (data.containsKey('use_count')) {
+      context.handle(
+        _useCountMeta,
+        useCount.isAcceptableOrUnknown(data['use_count']!, _useCountMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {vernacular, genus, species, subspecies, authorship},
+  ];
+  @override
+  SpeciesEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SpeciesEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      vernacular: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vernacular'],
+      )!,
+      genus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}genus'],
+      )!,
+      species: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}species'],
+      )!,
+      subspecies: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subspecies'],
+      )!,
+      authorship: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}authorship'],
+      )!,
+      useCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}use_count'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SpeciesDictTable createAlias(String alias) {
+    return $SpeciesDictTable(attachedDatabase, alias);
+  }
+}
+
+class SpeciesEntry extends DataClass implements Insertable<SpeciesEntry> {
+  final int id;
+  final String vernacular;
+  final String genus;
+  final String species;
+  final String subspecies;
+  final String authorship;
+
+  /// 候補の並び順に使う(よく使うものを上に出す)。
+  final int useCount;
+  final DateTime updatedAt;
+  const SpeciesEntry({
+    required this.id,
+    required this.vernacular,
+    required this.genus,
+    required this.species,
+    required this.subspecies,
+    required this.authorship,
+    required this.useCount,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['vernacular'] = Variable<String>(vernacular);
+    map['genus'] = Variable<String>(genus);
+    map['species'] = Variable<String>(species);
+    map['subspecies'] = Variable<String>(subspecies);
+    map['authorship'] = Variable<String>(authorship);
+    map['use_count'] = Variable<int>(useCount);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  SpeciesDictCompanion toCompanion(bool nullToAbsent) {
+    return SpeciesDictCompanion(
+      id: Value(id),
+      vernacular: Value(vernacular),
+      genus: Value(genus),
+      species: Value(species),
+      subspecies: Value(subspecies),
+      authorship: Value(authorship),
+      useCount: Value(useCount),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SpeciesEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SpeciesEntry(
+      id: serializer.fromJson<int>(json['id']),
+      vernacular: serializer.fromJson<String>(json['vernacular']),
+      genus: serializer.fromJson<String>(json['genus']),
+      species: serializer.fromJson<String>(json['species']),
+      subspecies: serializer.fromJson<String>(json['subspecies']),
+      authorship: serializer.fromJson<String>(json['authorship']),
+      useCount: serializer.fromJson<int>(json['useCount']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'vernacular': serializer.toJson<String>(vernacular),
+      'genus': serializer.toJson<String>(genus),
+      'species': serializer.toJson<String>(species),
+      'subspecies': serializer.toJson<String>(subspecies),
+      'authorship': serializer.toJson<String>(authorship),
+      'useCount': serializer.toJson<int>(useCount),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  SpeciesEntry copyWith({
+    int? id,
+    String? vernacular,
+    String? genus,
+    String? species,
+    String? subspecies,
+    String? authorship,
+    int? useCount,
+    DateTime? updatedAt,
+  }) => SpeciesEntry(
+    id: id ?? this.id,
+    vernacular: vernacular ?? this.vernacular,
+    genus: genus ?? this.genus,
+    species: species ?? this.species,
+    subspecies: subspecies ?? this.subspecies,
+    authorship: authorship ?? this.authorship,
+    useCount: useCount ?? this.useCount,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  SpeciesEntry copyWithCompanion(SpeciesDictCompanion data) {
+    return SpeciesEntry(
+      id: data.id.present ? data.id.value : this.id,
+      vernacular: data.vernacular.present
+          ? data.vernacular.value
+          : this.vernacular,
+      genus: data.genus.present ? data.genus.value : this.genus,
+      species: data.species.present ? data.species.value : this.species,
+      subspecies: data.subspecies.present
+          ? data.subspecies.value
+          : this.subspecies,
+      authorship: data.authorship.present
+          ? data.authorship.value
+          : this.authorship,
+      useCount: data.useCount.present ? data.useCount.value : this.useCount,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SpeciesEntry(')
+          ..write('id: $id, ')
+          ..write('vernacular: $vernacular, ')
+          ..write('genus: $genus, ')
+          ..write('species: $species, ')
+          ..write('subspecies: $subspecies, ')
+          ..write('authorship: $authorship, ')
+          ..write('useCount: $useCount, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    vernacular,
+    genus,
+    species,
+    subspecies,
+    authorship,
+    useCount,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SpeciesEntry &&
+          other.id == this.id &&
+          other.vernacular == this.vernacular &&
+          other.genus == this.genus &&
+          other.species == this.species &&
+          other.subspecies == this.subspecies &&
+          other.authorship == this.authorship &&
+          other.useCount == this.useCount &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SpeciesDictCompanion extends UpdateCompanion<SpeciesEntry> {
+  final Value<int> id;
+  final Value<String> vernacular;
+  final Value<String> genus;
+  final Value<String> species;
+  final Value<String> subspecies;
+  final Value<String> authorship;
+  final Value<int> useCount;
+  final Value<DateTime> updatedAt;
+  const SpeciesDictCompanion({
+    this.id = const Value.absent(),
+    this.vernacular = const Value.absent(),
+    this.genus = const Value.absent(),
+    this.species = const Value.absent(),
+    this.subspecies = const Value.absent(),
+    this.authorship = const Value.absent(),
+    this.useCount = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  SpeciesDictCompanion.insert({
+    this.id = const Value.absent(),
+    this.vernacular = const Value.absent(),
+    this.genus = const Value.absent(),
+    this.species = const Value.absent(),
+    this.subspecies = const Value.absent(),
+    this.authorship = const Value.absent(),
+    this.useCount = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  static Insertable<SpeciesEntry> custom({
+    Expression<int>? id,
+    Expression<String>? vernacular,
+    Expression<String>? genus,
+    Expression<String>? species,
+    Expression<String>? subspecies,
+    Expression<String>? authorship,
+    Expression<int>? useCount,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (vernacular != null) 'vernacular': vernacular,
+      if (genus != null) 'genus': genus,
+      if (species != null) 'species': species,
+      if (subspecies != null) 'subspecies': subspecies,
+      if (authorship != null) 'authorship': authorship,
+      if (useCount != null) 'use_count': useCount,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  SpeciesDictCompanion copyWith({
+    Value<int>? id,
+    Value<String>? vernacular,
+    Value<String>? genus,
+    Value<String>? species,
+    Value<String>? subspecies,
+    Value<String>? authorship,
+    Value<int>? useCount,
+    Value<DateTime>? updatedAt,
+  }) {
+    return SpeciesDictCompanion(
+      id: id ?? this.id,
+      vernacular: vernacular ?? this.vernacular,
+      genus: genus ?? this.genus,
+      species: species ?? this.species,
+      subspecies: subspecies ?? this.subspecies,
+      authorship: authorship ?? this.authorship,
+      useCount: useCount ?? this.useCount,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (vernacular.present) {
+      map['vernacular'] = Variable<String>(vernacular.value);
+    }
+    if (genus.present) {
+      map['genus'] = Variable<String>(genus.value);
+    }
+    if (species.present) {
+      map['species'] = Variable<String>(species.value);
+    }
+    if (subspecies.present) {
+      map['subspecies'] = Variable<String>(subspecies.value);
+    }
+    if (authorship.present) {
+      map['authorship'] = Variable<String>(authorship.value);
+    }
+    if (useCount.present) {
+      map['use_count'] = Variable<int>(useCount.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SpeciesDictCompanion(')
+          ..write('id: $id, ')
+          ..write('vernacular: $vernacular, ')
+          ..write('genus: $genus, ')
+          ..write('species: $species, ')
+          ..write('subspecies: $subspecies, ')
+          ..write('authorship: $authorship, ')
+          ..write('useCount: $useCount, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TextDictTable extends TextDict
+    with TableInfo<$TextDictTable, TextDictEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TextDictTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DictTextKind, String> kind =
+      GeneratedColumn<String>(
+        'kind',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<DictTextKind>($TextDictTable.$converterkind);
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _useCountMeta = const VerificationMeta(
+    'useCount',
+  );
+  @override
+  late final GeneratedColumn<int> useCount = GeneratedColumn<int>(
+    'use_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, kind, value, useCount, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'text_dict';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TextDictEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    if (data.containsKey('use_count')) {
+      context.handle(
+        _useCountMeta,
+        useCount.isAcceptableOrUnknown(data['use_count']!, _useCountMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {kind, value},
+  ];
+  @override
+  TextDictEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TextDictEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      kind: $TextDictTable.$converterkind.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}kind'],
+        )!,
+      ),
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+      useCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}use_count'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TextDictTable createAlias(String alias) {
+    return $TextDictTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<DictTextKind, String, String> $converterkind =
+      const EnumNameConverter<DictTextKind>(DictTextKind.values);
+}
+
+class TextDictEntry extends DataClass implements Insertable<TextDictEntry> {
+  final int id;
+
+  /// `habitat`(環境)か `hostPlant`(寄主植物)。
+  final DictTextKind kind;
+  final String value;
+  final int useCount;
+  final DateTime updatedAt;
+  const TextDictEntry({
+    required this.id,
+    required this.kind,
+    required this.value,
+    required this.useCount,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    {
+      map['kind'] = Variable<String>($TextDictTable.$converterkind.toSql(kind));
+    }
+    map['value'] = Variable<String>(value);
+    map['use_count'] = Variable<int>(useCount);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  TextDictCompanion toCompanion(bool nullToAbsent) {
+    return TextDictCompanion(
+      id: Value(id),
+      kind: Value(kind),
+      value: Value(value),
+      useCount: Value(useCount),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory TextDictEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TextDictEntry(
+      id: serializer.fromJson<int>(json['id']),
+      kind: $TextDictTable.$converterkind.fromJson(
+        serializer.fromJson<String>(json['kind']),
+      ),
+      value: serializer.fromJson<String>(json['value']),
+      useCount: serializer.fromJson<int>(json['useCount']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'kind': serializer.toJson<String>(
+        $TextDictTable.$converterkind.toJson(kind),
+      ),
+      'value': serializer.toJson<String>(value),
+      'useCount': serializer.toJson<int>(useCount),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  TextDictEntry copyWith({
+    int? id,
+    DictTextKind? kind,
+    String? value,
+    int? useCount,
+    DateTime? updatedAt,
+  }) => TextDictEntry(
+    id: id ?? this.id,
+    kind: kind ?? this.kind,
+    value: value ?? this.value,
+    useCount: useCount ?? this.useCount,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  TextDictEntry copyWithCompanion(TextDictCompanion data) {
+    return TextDictEntry(
+      id: data.id.present ? data.id.value : this.id,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      value: data.value.present ? data.value.value : this.value,
+      useCount: data.useCount.present ? data.useCount.value : this.useCount,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TextDictEntry(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('value: $value, ')
+          ..write('useCount: $useCount, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, kind, value, useCount, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TextDictEntry &&
+          other.id == this.id &&
+          other.kind == this.kind &&
+          other.value == this.value &&
+          other.useCount == this.useCount &&
+          other.updatedAt == this.updatedAt);
+}
+
+class TextDictCompanion extends UpdateCompanion<TextDictEntry> {
+  final Value<int> id;
+  final Value<DictTextKind> kind;
+  final Value<String> value;
+  final Value<int> useCount;
+  final Value<DateTime> updatedAt;
+  const TextDictCompanion({
+    this.id = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.value = const Value.absent(),
+    this.useCount = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  TextDictCompanion.insert({
+    this.id = const Value.absent(),
+    required DictTextKind kind,
+    required String value,
+    this.useCount = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : kind = Value(kind),
+       value = Value(value);
+  static Insertable<TextDictEntry> custom({
+    Expression<int>? id,
+    Expression<String>? kind,
+    Expression<String>? value,
+    Expression<int>? useCount,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (kind != null) 'kind': kind,
+      if (value != null) 'value': value,
+      if (useCount != null) 'use_count': useCount,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  TextDictCompanion copyWith({
+    Value<int>? id,
+    Value<DictTextKind>? kind,
+    Value<String>? value,
+    Value<int>? useCount,
+    Value<DateTime>? updatedAt,
+  }) {
+    return TextDictCompanion(
+      id: id ?? this.id,
+      kind: kind ?? this.kind,
+      value: value ?? this.value,
+      useCount: useCount ?? this.useCount,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(
+        $TextDictTable.$converterkind.toSql(kind.value),
+      );
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (useCount.present) {
+      map['use_count'] = Variable<int>(useCount.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TextDictCompanion(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('value: $value, ')
+          ..write('useCount: $useCount, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5990,6 +6838,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $OfflineAreasTable offlineAreas = $OfflineAreasTable(this);
+  late final $SpeciesDictTable speciesDict = $SpeciesDictTable(this);
+  late final $TextDictTable textDict = $TextDictTable(this);
   late final Index idxLocalitiesKey = Index(
     'idx_localities_key',
     'CREATE INDEX idx_localities_key ON localities (lat_e4, lon_e4)',
@@ -6008,6 +6858,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     appSettings,
     placeRomajiDict,
     offlineAreas,
+    speciesDict,
+    textDict,
     idxLocalitiesKey,
   ];
 }
@@ -9730,6 +10582,474 @@ typedef $$OfflineAreasTableProcessedTableManager =
       OfflineArea,
       PrefetchHooks Function()
     >;
+typedef $$SpeciesDictTableCreateCompanionBuilder =
+    SpeciesDictCompanion Function({
+      Value<int> id,
+      Value<String> vernacular,
+      Value<String> genus,
+      Value<String> species,
+      Value<String> subspecies,
+      Value<String> authorship,
+      Value<int> useCount,
+      Value<DateTime> updatedAt,
+    });
+typedef $$SpeciesDictTableUpdateCompanionBuilder =
+    SpeciesDictCompanion Function({
+      Value<int> id,
+      Value<String> vernacular,
+      Value<String> genus,
+      Value<String> species,
+      Value<String> subspecies,
+      Value<String> authorship,
+      Value<int> useCount,
+      Value<DateTime> updatedAt,
+    });
+
+class $$SpeciesDictTableFilterComposer
+    extends Composer<_$AppDatabase, $SpeciesDictTable> {
+  $$SpeciesDictTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vernacular => $composableBuilder(
+    column: $table.vernacular,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get genus => $composableBuilder(
+    column: $table.genus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get species => $composableBuilder(
+    column: $table.species,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subspecies => $composableBuilder(
+    column: $table.subspecies,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorship => $composableBuilder(
+    column: $table.authorship,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get useCount => $composableBuilder(
+    column: $table.useCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SpeciesDictTableOrderingComposer
+    extends Composer<_$AppDatabase, $SpeciesDictTable> {
+  $$SpeciesDictTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vernacular => $composableBuilder(
+    column: $table.vernacular,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get genus => $composableBuilder(
+    column: $table.genus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get species => $composableBuilder(
+    column: $table.species,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subspecies => $composableBuilder(
+    column: $table.subspecies,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorship => $composableBuilder(
+    column: $table.authorship,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get useCount => $composableBuilder(
+    column: $table.useCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SpeciesDictTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SpeciesDictTable> {
+  $$SpeciesDictTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get vernacular => $composableBuilder(
+    column: $table.vernacular,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get genus =>
+      $composableBuilder(column: $table.genus, builder: (column) => column);
+
+  GeneratedColumn<String> get species =>
+      $composableBuilder(column: $table.species, builder: (column) => column);
+
+  GeneratedColumn<String> get subspecies => $composableBuilder(
+    column: $table.subspecies,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get authorship => $composableBuilder(
+    column: $table.authorship,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get useCount =>
+      $composableBuilder(column: $table.useCount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$SpeciesDictTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SpeciesDictTable,
+          SpeciesEntry,
+          $$SpeciesDictTableFilterComposer,
+          $$SpeciesDictTableOrderingComposer,
+          $$SpeciesDictTableAnnotationComposer,
+          $$SpeciesDictTableCreateCompanionBuilder,
+          $$SpeciesDictTableUpdateCompanionBuilder,
+          (
+            SpeciesEntry,
+            BaseReferences<_$AppDatabase, $SpeciesDictTable, SpeciesEntry>,
+          ),
+          SpeciesEntry,
+          PrefetchHooks Function()
+        > {
+  $$SpeciesDictTableTableManager(_$AppDatabase db, $SpeciesDictTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SpeciesDictTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SpeciesDictTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SpeciesDictTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> vernacular = const Value.absent(),
+                Value<String> genus = const Value.absent(),
+                Value<String> species = const Value.absent(),
+                Value<String> subspecies = const Value.absent(),
+                Value<String> authorship = const Value.absent(),
+                Value<int> useCount = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => SpeciesDictCompanion(
+                id: id,
+                vernacular: vernacular,
+                genus: genus,
+                species: species,
+                subspecies: subspecies,
+                authorship: authorship,
+                useCount: useCount,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> vernacular = const Value.absent(),
+                Value<String> genus = const Value.absent(),
+                Value<String> species = const Value.absent(),
+                Value<String> subspecies = const Value.absent(),
+                Value<String> authorship = const Value.absent(),
+                Value<int> useCount = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => SpeciesDictCompanion.insert(
+                id: id,
+                vernacular: vernacular,
+                genus: genus,
+                species: species,
+                subspecies: subspecies,
+                authorship: authorship,
+                useCount: useCount,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SpeciesDictTable, SpeciesEntry>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SpeciesDictTable,
+                    SpeciesEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SpeciesDictTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SpeciesDictTable,
+      SpeciesEntry,
+      $$SpeciesDictTableFilterComposer,
+      $$SpeciesDictTableOrderingComposer,
+      $$SpeciesDictTableAnnotationComposer,
+      $$SpeciesDictTableCreateCompanionBuilder,
+      $$SpeciesDictTableUpdateCompanionBuilder,
+      (
+        SpeciesEntry,
+        BaseReferences<_$AppDatabase, $SpeciesDictTable, SpeciesEntry>,
+      ),
+      SpeciesEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$TextDictTableCreateCompanionBuilder = TextDictCompanion Function({
+  Value<int> id,
+  required DictTextKind kind,
+  required String value,
+  Value<int> useCount,
+  Value<DateTime> updatedAt,
+});
+typedef $$TextDictTableUpdateCompanionBuilder = TextDictCompanion Function({
+  Value<int> id,
+  Value<DictTextKind> kind,
+  Value<String> value,
+  Value<int> useCount,
+  Value<DateTime> updatedAt,
+});
+
+class $$TextDictTableFilterComposer
+    extends Composer<_$AppDatabase, $TextDictTable> {
+  $$TextDictTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DictTextKind, DictTextKind, String> get kind =>
+      $composableBuilder(
+        column: $table.kind,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get useCount => $composableBuilder(
+    column: $table.useCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TextDictTableOrderingComposer
+    extends Composer<_$AppDatabase, $TextDictTable> {
+  $$TextDictTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get useCount => $composableBuilder(
+    column: $table.useCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TextDictTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TextDictTable> {
+  $$TextDictTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DictTextKind, String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+
+  GeneratedColumn<int> get useCount =>
+      $composableBuilder(column: $table.useCount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$TextDictTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TextDictTable,
+          TextDictEntry,
+          $$TextDictTableFilterComposer,
+          $$TextDictTableOrderingComposer,
+          $$TextDictTableAnnotationComposer,
+          $$TextDictTableCreateCompanionBuilder,
+          $$TextDictTableUpdateCompanionBuilder,
+          (
+            TextDictEntry,
+            BaseReferences<_$AppDatabase, $TextDictTable, TextDictEntry>,
+          ),
+          TextDictEntry,
+          PrefetchHooks Function()
+        > {
+  $$TextDictTableTableManager(_$AppDatabase db, $TextDictTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TextDictTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TextDictTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TextDictTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DictTextKind> kind = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<int> useCount = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => TextDictCompanion(
+                id: id,
+                kind: kind,
+                value: value,
+                useCount: useCount,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required DictTextKind kind,
+                required String value,
+                Value<int> useCount = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => TextDictCompanion.insert(
+                id: id,
+                kind: kind,
+                value: value,
+                useCount: useCount,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TextDictTable, TextDictEntry>(table),
+                  BaseReferences<_$AppDatabase, $TextDictTable, TextDictEntry>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TextDictTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TextDictTable,
+      TextDictEntry,
+      $$TextDictTableFilterComposer,
+      $$TextDictTableOrderingComposer,
+      $$TextDictTableAnnotationComposer,
+      $$TextDictTableCreateCompanionBuilder,
+      $$TextDictTableUpdateCompanionBuilder,
+      (
+        TextDictEntry,
+        BaseReferences<_$AppDatabase, $TextDictTable, TextDictEntry>,
+      ),
+      TextDictEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9752,4 +11072,8 @@ class $AppDatabaseManager {
       $$PlaceRomajiDictTableTableManager(_db, _db.placeRomajiDict);
   $$OfflineAreasTableTableManager get offlineAreas =>
       $$OfflineAreasTableTableManager(_db, _db.offlineAreas);
+  $$SpeciesDictTableTableManager get speciesDict =>
+      $$SpeciesDictTableTableManager(_db, _db.speciesDict);
+  $$TextDictTableTableManager get textDict =>
+      $$TextDictTableTableManager(_db, _db.textDict);
 }

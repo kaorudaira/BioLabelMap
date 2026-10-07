@@ -9,6 +9,7 @@ import '../../domain/specimen_list.dart';
 import '../../domain/status.dart';
 import '../../services/service_providers.dart';
 import '../../services/specimen_service.dart';
+import '../identification/identify_screen.dart';
 import '../record/form_block.dart';
 import '../record/record_form.dart';
 import '../record/record_screen.dart';
@@ -65,6 +66,14 @@ class SpecimenDetailScreen extends ConsumerWidget {
     return FormBlock(
       color: BlockColors.identification,
       title: '同定(最新)',
+      trailing: TextButton.icon(
+        onPressed: () => context.push(
+          '/identify',
+          extra: IdentifyArgs([d.specimen.id], initial: name.isEmpty ? null : name),
+        ),
+        icon: const Icon(Icons.add),
+        label: const Text('同定を追加'),
+      ),
       children: [
         if (latest == null || name.isEmpty)
           const _Field('種名', '未同定')

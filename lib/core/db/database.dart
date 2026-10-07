@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import '../../domain/elevation_rounding.dart';
+import '../../domain/dictionary.dart';
 import '../../domain/sampling_method.dart';
 import '../../domain/status.dart';
 import '../../domain/models/calendar_date.dart';
@@ -23,6 +24,8 @@ part 'database.g.dart';
     AppSettings,
     PlaceRomajiDict,
     OfflineAreas,
+    SpeciesDict,
+    TextDict,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -33,7 +36,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.open() => AppDatabase(driftDatabase(name: 'biolabelmap'));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -50,6 +53,11 @@ class AppDatabase extends _$AppDatabase {
       // 2 → 3: オフライン地図
       if (from < 3) {
         await m.createTable(offlineAreas);
+      }
+      // 3 → 4: 種の辞書、環境・寄主植物の辞書
+      if (from < 4) {
+        await m.createTable(speciesDict);
+        await m.createTable(textDict);
       }
     },
     beforeOpen: (details) async {
