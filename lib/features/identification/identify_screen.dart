@@ -80,7 +80,8 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
     for (final MapEntry(:key, :value) in _controllers.entries) {
       value.addListener(() {
         if (!_picking && !_autofilling && _nameFields.contains(key)) {
-          if (_focus[key]!.hasFocus) _refreshCandidates(value.text);
+          // 候補は、属や種など入力済みの項目をすべて合わせた文字で引く
+          if (_focus[key]!.hasFocus) _refreshCandidates(_nameFields.map((f) => _controllers[f]!.text).join(' '));
           _autoFill();
         }
         setState(() {});

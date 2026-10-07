@@ -252,6 +252,26 @@ void main() {
       expect(text(tester, '命名者・年'), 'Y. Kurosawa, 1963');
     });
 
+    testWidgets('属を入れてから種を打つと、両方に合う候補だけに絞り込む', (tester) async {
+      await pumpScreen(
+        tester,
+        catalog: SpeciesCatalog.parseCsv(
+          '"A","Coraebus ignotus ignotus E. Saunders, 1873"\n'
+          '"B","Coraebus ignotus shibatai Y. Kurosawa, 1963"\n'
+          '"C","Coraebus other Bates, 1888"\n'
+          '"D","Another ignotus Bates, 1888"',
+        ),
+      );
+      await tester.enterText(field('属'), 'Coraebus');
+      await settle(tester);
+      expect(find.text('目録'), findsNWidgets(3));
+
+      await tester.enterText(field('種'), 'ignotus');
+      await settle(tester);
+      expect(find.text('目録'), findsNWidgets(2));
+      expect(find.textContaining('Another'), findsNothing);
+    });
+
     testWidgets('自分が使った種(辞書)を先に出し、同じ種は目録と重ねて出さない', (tester) async {
       await pumpScreen(
         tester,
