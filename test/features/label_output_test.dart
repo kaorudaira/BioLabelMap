@@ -9,6 +9,8 @@ import 'package:biolabelmap/domain/label/data_label_builder.dart';
 import 'package:biolabelmap/domain/label/data_label_layout.dart';
 import 'package:biolabelmap/domain/label/identification_label.dart';
 import 'package:biolabelmap/domain/label/label_sheet.dart';
+import 'package:biolabelmap/domain/label/printed_values.dart';
+import 'package:biolabelmap/services/printed_label_values.dart';
 import 'package:biolabelmap/domain/models/calendar_date.dart';
 import 'package:biolabelmap/domain/models/collection_period.dart';
 import 'package:biolabelmap/domain/models/place_info.dart';
@@ -213,21 +215,83 @@ void main() {
       expect(latin1.decode(pdf, allowInvalid: true), contains('FiraSansCondensed-Italic'));
     });
 
-    test('印刷済みにすると、印字した標高と地名を残す', () async {
+    test('印刷済みにすると、ラベルに載せた元の標高と地名(省略前の値)を残す', () async {
       final candidates = await labels.watchCandidates().first;
-      final layouts = {
-        for (final c in candidates)
-          c.specimen.id: layoutDataLabel(
-            buildDataLabel(c.toSource(ElevationRounding.tenMeters)),
-            measurer: fonts.measurer,
-          ),
-      };
-      await labels.markPrinted(layouts, now: DateTime(2026, 6, 21, 20));
+      await labels.markPrinted({
+        for (final c in candidates) c.specimen.id: currentLabelValues(c.locality, ElevationRounding.tenMeters),
+      }, now: DateTime(2026, 6, 21, 20));
 
       final after = await labels.watchCandidates().first;
       expect(after.every((c) => c.printed), isTrue);
       expect(after.first.specimen.printedElevation, '1390');
-      expect(after.first.specimen.printedPlace, 'JAPAN: Niigata-ken Uonuma-shi, Shimooritate 魚沼市下折立');
+      expect(
+        after.first.specimen.printedPlace,
+        ['JAPAN', 'Niigata-ken', '', 'Uonuma-shi', 'Shimooritate', '', '魚沼市', '下折立'].join(PrintedLabelValues.placeSeparator),
+      );
+    });
+
+    group('ラベルと不一致', () {
+      Future<void> printAll() async {
+        final candidates = await labels.watchCandidates().first;
+        await labels.markPrinted({
+          for (final c in candidates) c.specimen.id: currentLabelValues(c.locality, ElevationRounding.tenMeters),
+        });
+      }
+
+      Future<bool> mismatch({ElevationRounding rounding = ElevationRounding.tenMeters}) async =>
+          (await labels.watchCandidates().first).first.labelMismatch(rounding);
+
+      test('印刷していない標本は、不一致にならない。印刷した直後も不一致ではない', () async {
+        expect(await mismatch(), isFalse);
+        await printAll();
+        expect(await mismatch(), isFalse);
+      });
+
+      test('標高が変わると不一致。丸めると同じ値なら、不一致にしない', () async {
+        await printAll();
+        await db.update(db.localities).write(const LocalitiesCompanion(elevationMeters: Value(1391)));
+        expect(await mismatch(), isFalse); // 10m に丸めると 1390 のまま
+        await db.update(db.localities).write(const LocalitiesCompanion(elevationMeters: Value(1420)));
+        expect(await mismatch(), isTrue);
+      });
+
+      test('設定の丸めを変えると、ラベルの値が変わるので不一致', () async {
+        await printAll();
+        expect(await mismatch(rounding: ElevationRounding.oneMeter), isTrue); // 1388 と 1390
+      });
+
+      test('地名(英語・日本語)が変わると不一致', () async {
+        await printAll();
+        await db.update(db.localities).write(const LocalitiesCompanion(localityEn: Value('Shimooritate-onsen')));
+        expect(await mismatch(), isTrue);
+      });
+
+      test('そのまま印刷した(標高・地名が未取得だった)標本は、補完で取得できたら不一致になる', () async {
+        await db.update(db.localities).write(const LocalitiesCompanion(elevationMeters: Value(null), localityJa: Value(null)));
+        await printAll();
+        expect(await mismatch(), isFalse);
+        await db.update(db.localities).write(const LocalitiesCompanion(elevationMeters: Value(1388.4), localityJa: Value('下折立')));
+        expect(await mismatch(), isTrue);
+      });
+
+      test('再印刷して印刷済みにし直すと、不一致は解消する', () async {
+        await printAll();
+        await db.update(db.localities).write(const LocalitiesCompanion(elevationMeters: Value(1420)));
+        expect(await mismatch(), isTrue);
+        await printAll();
+        expect(await mismatch(), isFalse);
+      });
+
+      test('古い形式で残した地名(印字した文字列)は、元の値が分からないので、地名では不一致にしない。標高は比べる', () async {
+        await printAll();
+        await (db.update(db.specimens)).write(
+          const SpecimensCompanion(printedPlace: Value('JAPAN: Niigata-ken Uonuma-shi, Shimooritate 魚沼市下折立')),
+        );
+        await db.update(db.localities).write(const LocalitiesCompanion(localityEn: Value('Other')));
+        expect(await mismatch(), isFalse);
+        await db.update(db.localities).write(const LocalitiesCompanion(elevationMeters: Value(1420)));
+        expect(await mismatch(), isTrue);
+      });
     });
   });
 

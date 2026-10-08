@@ -21,10 +21,15 @@ void main() {
   tearDown(() => db.close());
 
   /// 3標本を記録し、1件目だけ同定する(2件目は印刷済みにする)。
-  Future<void> pumpScreen(WidgetTester tester, {Set<int> Function(List<LabelCandidate>)? pick}) async {
+  Future<void> pumpScreen(
+    WidgetTester tester, {
+    Set<int> Function(List<LabelCandidate>)? pick,
+    bool mismatchSecond = false,
+  }) async {
     tester.view.physicalSize = const Size(800, 1800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    late final AppSettingsRow settings;
     final candidates = await tester.runAsync(() async {
       await SettingsService(db).initializeCatalog(0);
       final r = await RecordService(db).save(
@@ -45,12 +50,20 @@ void main() {
         ),
       );
       await (db.update(db.specimens)..where((s) => s.id.equals(r.specimenIds[1])))
-          .write(SpecimensCompanion(printedAt: Value(DateTime(2026, 6, 21))));
+          .write(SpecimensCompanion(
+            printedAt: Value(DateTime(2026, 6, 21)),
+            // 印刷したときの標高が、いまの値(無し)と食い違う
+            printedElevation: Value(mismatchSecond ? '9999' : ''),
+          ));
+      settings = await SettingsService(db).read();
       return LabelService(db).watchCandidates().first;
     });
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [labelCandidatesProvider.overrideWith((ref) => Stream.value(candidates!))],
+        overrides: [
+          labelCandidatesProvider.overrideWith((ref) => Stream.value(candidates!)),
+          settingsProvider.overrideWith((ref) => Stream.value(settings)),
+        ],
         child: MaterialApp(home: LabelScreen(specimenIds: pick?.call(candidates!))),
       ),
     );
@@ -99,5 +112,18 @@ void main() {
     expect(find.text('印刷済み'), findsOneWidget);
     expect(find.textContaining('KYC00003'), findsNothing);
     expect(tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '未印刷のみ')).value, isFalse);
+  });
+
+  testWidgets('印刷したあとに標高や地名が変わった標本は「ラベルと不一致」と出て、未印刷のみでも再印刷の対象になる', (tester) async {
+    await pumpScreen(tester, mismatchSecond: true);
+    expect(find.text('ラベルと不一致'), findsOneWidget);
+    // 未印刷の2件に、不一致の1件を加えた3件 × (データ+コレクション)
+    expect(find.text('PDFを作成(6枚・1ページ)'), findsOneWidget);
+  });
+
+  testWidgets('食い違いが無ければ、印刷済みの標本は「未印刷のみ」で除く', (tester) async {
+    await pumpScreen(tester);
+    expect(find.text('ラベルと不一致'), findsNothing);
+    expect(find.text('PDFを作成(4枚・1ページ)'), findsOneWidget);
   });
 }

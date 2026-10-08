@@ -20,6 +20,7 @@ class SpecimenListItem {
     required this.placeEn,
     required this.printed,
     this.deletedAt,
+    this.labelMismatch = false,
   });
 
   final int id;
@@ -43,6 +44,9 @@ class SpecimenListItem {
 
   /// ごみ箱に移した日時。ごみ箱の外の標本は null。
   final DateTime? deletedAt;
+
+  /// 印刷したラベルの標高・地名が、いまの値と食い違っている(要件定義 第13章)。
+  final bool labelMismatch;
 }
 
 /// 種・採集日・場所・採集方法が同じ標本を1行にまとめたもの。
@@ -82,6 +86,9 @@ class SpecimenGroup {
 
   /// 1件でも未印刷があれば、その行に未印刷のマークを付ける。
   bool get hasUnprinted => items.any((i) => !i.printed);
+
+  /// 1件でも「ラベルと不一致」があれば、その行に印を付ける。
+  bool get hasLabelMismatch => items.any((i) => i.labelMismatch);
 }
 
 /// 同じ種・採集日(期間)・地点・採集方法の標本を1つにまとめる。
@@ -122,6 +129,7 @@ class SpecimenFilter {
     this.methods = const {},
     this.statuses = const {},
     this.unprintedOnly = false,
+    this.mismatchOnly = false,
   });
 
   /// 種名・地名・標本番号を横断して探す。
@@ -137,6 +145,9 @@ class SpecimenFilter {
   final Set<IdentificationStatus> statuses;
   final bool unprintedOnly;
 
+  /// 「ラベルと不一致」の標本だけ。
+  final bool mismatchOnly;
+
   /// 検索語以外の絞り込み条件が1つでもあるか(画面上部に条件を示すかの判定)。
   bool get hasConditions =>
       place.trim().isNotEmpty ||
@@ -144,7 +155,8 @@ class SpecimenFilter {
       to != null ||
       methods.isNotEmpty ||
       statuses.isNotEmpty ||
-      unprintedOnly;
+      unprintedOnly ||
+      mismatchOnly;
 
   bool get isActive => hasConditions || query.trim().isNotEmpty;
 
@@ -156,6 +168,7 @@ class SpecimenFilter {
     Set<SamplingMethod>? methods,
     Set<IdentificationStatus>? statuses,
     bool? unprintedOnly,
+    bool? mismatchOnly,
   }) => SpecimenFilter(
     query: query ?? this.query,
     place: place ?? this.place,
@@ -164,12 +177,14 @@ class SpecimenFilter {
     methods: methods ?? this.methods,
     statuses: statuses ?? this.statuses,
     unprintedOnly: unprintedOnly ?? this.unprintedOnly,
+    mismatchOnly: mismatchOnly ?? this.mismatchOnly,
   );
 
   static const _keep = Object();
 
   bool matches(SpecimenListItem item) {
     if (unprintedOnly && item.printed) return false;
+    if (mismatchOnly && !item.labelMismatch) return false;
     if (methods.isNotEmpty && !methods.contains(item.method)) return false;
     if (statuses.isNotEmpty && !statuses.contains(item.status)) return false;
     if (from != null && item.period.end.isBefore(from!)) return false;

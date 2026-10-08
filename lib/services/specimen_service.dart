@@ -2,10 +2,13 @@ import 'package:drift/drift.dart';
 
 import '../core/db/database.dart';
 import '../domain/models/collection_period.dart';
+import '../domain/elevation_rounding.dart';
+import '../domain/label/printed_values.dart';
 import '../domain/sampling_method.dart';
 import '../domain/specimen_list.dart';
 import '../domain/species_name.dart';
 import '../domain/status.dart';
+import 'printed_label_values.dart';
 
 /// 標本詳細(要件定義 S-05)に出す、標本・採集・地点・同定履歴のひとまとまり。
 class SpecimenDetail {
@@ -14,6 +17,7 @@ class SpecimenDetail {
     required this.event,
     required this.locality,
     required this.history,
+    this.labelMismatch = false,
   });
 
   final Specimen specimen;
@@ -22,6 +26,9 @@ class SpecimenDetail {
 
   /// 同定履歴。新しい順。上書きはせず積んでいくので、先頭が最新。
   final List<Identification> history;
+
+  /// 印刷したラベルの標高・地名が、いまの値と食い違っている(再印刷を促す)。
+  final bool labelMismatch;
 
   Identification? get latest => history.isEmpty ? null : history.first;
 
@@ -70,6 +77,7 @@ class SpecimenService {
       innerJoin(_db.localities, _db.localities.id.equalsExp(_db.collectionEvents.localityId)),
     ])..where(trashed ? _db.specimens.deletedAt.isNotNull() : _db.specimens.deletedAt.isNull());
     final rows = await query.get();
+    final rounding = (await _db.select(_db.appSettings).getSingle()).elevationRounding;
 
     // 最新の同定だけ使う。id の大きい順に読み、標本ごとに最初の1件を取る。
     final latest = <int, Identification>{};
@@ -85,6 +93,7 @@ class SpecimenService {
           row.readTable(_db.collectionEvents),
           row.readTable(_db.localities),
           latest[row.readTable(_db.specimens).id],
+          rounding,
         ),
     ];
   }
@@ -106,10 +115,23 @@ class SpecimenService {
       event: row.readTable(_db.collectionEvents),
       locality: row.readTable(_db.localities),
       history: history,
+      labelMismatch: _mismatch(
+        row.readTable(_db.specimens),
+        row.readTable(_db.localities),
+        (await _db.select(_db.appSettings).getSingle()).elevationRounding,
+      ),
     );
   }
 
-  SpecimenListItem _toItem(Specimen s, CollectionEvent e, Locality l, Identification? latest) {
+  /// 印刷したラベルの標高・地名が、いまの値と食い違っているか。
+  bool _mismatch(Specimen s, Locality l, ElevationRounding rounding) => isLabelMismatch(
+    printedAt: s.printedAt,
+    printedElevation: s.printedElevation,
+    printedPlace: s.printedPlace,
+    current: currentLabelValues(l, rounding),
+  );
+
+  SpecimenListItem _toItem(Specimen s, CollectionEvent e, Locality l, Identification? latest, ElevationRounding rounding) {
     final method = e.samplingMethod;
     return SpecimenListItem(
       id: s.id,
@@ -135,6 +157,7 @@ class SpecimenService {
       ),
       printed: s.printedAt != null,
       deletedAt: s.deletedAt,
+      labelMismatch: _mismatch(s, l, rounding),
     );
   }
 }

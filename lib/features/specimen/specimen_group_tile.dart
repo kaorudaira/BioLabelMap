@@ -90,6 +90,11 @@ class SpecimenGroupTile extends StatelessWidget {
                 ],
               ),
             ),
+            if (group.hasLabelMismatch)
+              const Tooltip(
+                message: 'ラベルと不一致',
+                child: Icon(Icons.sync_problem, size: 20, color: warningColor),
+              ),
             if (group.hasUnprinted)
               const Tooltip(
                 message: '未印刷',

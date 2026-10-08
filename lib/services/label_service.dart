@@ -4,11 +4,12 @@ import '../core/db/database.dart';
 import '../domain/elevation_rounding.dart';
 import '../domain/label/collector_name_format.dart';
 import '../domain/label/data_label_builder.dart';
-import '../domain/label/data_label_layout.dart';
 import '../domain/label/identification_label.dart';
+import '../domain/label/printed_values.dart';
 import '../domain/models/collection_period.dart';
 import '../domain/status.dart';
 import 'locality_lookup_service.dart';
+import 'printed_label_values.dart';
 import 'specimen_service.dart' show speciesNameOf;
 
 /// ラベル出力の候補になる標本1件(標本・採集・地点をまとめたもの)。
@@ -32,6 +33,14 @@ class LabelCandidate {
   }
 
   bool get printed => specimen.printedAt != null;
+
+  /// 印刷したラベルの標高・地名が、いまの値と食い違っている(要件定義 第13章)。再印刷を促す。
+  bool labelMismatch(ElevationRounding rounding) => isLabelMismatch(
+    printedAt: specimen.printedAt,
+    printedElevation: specimen.printedElevation,
+    printedPlace: specimen.printedPlace,
+    current: currentLabelValues(locality, rounding),
+  );
 
   /// 標高か地名が、まだ取得できていない(補完待ち)。
   bool get pendingEnrichment =>
@@ -134,35 +143,20 @@ class LabelService {
     });
   }
 
-  /// 印刷済みにする。印字した標高と地名を標本ごとに残し、
+  /// 印刷済みにする。ラベルに載せた元の標高と地名(省略前の値)を標本ごとに残し、
   /// のちに補完や修正で値が変わったら「ラベルと不一致」にできるようにする(要件定義 第13章)。
-  Future<void> markPrinted(Map<int, DataLabelLayout> printedLabels, {DateTime? now}) {
+  Future<void> markPrinted(Map<int, PrintedLabelValues> printedLabels, {DateTime? now}) {
     final printedAt = now ?? DateTime.now();
     return _db.transaction(() async {
-      for (final MapEntry(key: specimenId, value: layout) in printedLabels.entries) {
+      for (final MapEntry(key: specimenId, value: values) in printedLabels.entries) {
         await (_db.update(_db.specimens)..where((s) => s.id.equals(specimenId))).write(
           SpecimensCompanion(
             printedAt: Value(printedAt),
-            printedElevation: Value(printedElevationOf(layout)),
-            printedPlace: Value(printedPlaceOf(layout)),
+            printedElevation: Value(values.elevation),
+            printedPlace: Value(values.place),
           ),
         );
       }
     });
   }
 }
-
-/// 印字した標高(`(alt. 1390 m)`)。印字していなければ空文字。
-String printedElevationOf(DataLabelLayout layout) {
-  final match = RegExp(r'\(alt\. (-?\d+) m\)').firstMatch(layout.lines.map((l) => l.text).join(' '));
-  return match?.group(1) ?? '';
-}
-
-/// 印字した地名(県・詳細住所・日本語の地名)。
-String printedPlaceOf(DataLabelLayout layout) => layout.lines
-    .where((l) => switch (l.role) {
-      DataLabelLineRole.header || DataLabelLineRole.address || DataLabelLineRole.japanese => true,
-      _ => false,
-    })
-    .map((l) => l.text)
-    .join(' ');

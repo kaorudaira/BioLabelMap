@@ -84,6 +84,7 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
                     methods: const {},
                     statuses: const {},
                     unprintedOnly: false,
+                    mismatchOnly: false,
                   ),
                 ),
               ),
@@ -282,6 +283,7 @@ class _ConditionBar extends StatelessWidget {
       if (filter.methods.isNotEmpty) '採集方法: ${filter.methods.map((m) => m.nameJa).join('・')}',
       if (filter.statuses.isNotEmpty) '同定: ${filter.statuses.map((s) => s.label).join('・')}',
       if (filter.unprintedOnly) '未印刷のみ',
+      if (filter.mismatchOnly) 'ラベルと不一致のみ',
     ];
     return Material(
       color: Theme.of(context).colorScheme.secondaryContainer,
