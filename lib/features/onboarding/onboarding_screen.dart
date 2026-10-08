@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
+import '../common/clear_button.dart';import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/catalog_number.dart';
@@ -69,10 +70,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             const SizedBox(height: 20),
             TextFormField(
               controller: _lastNumber,
-              decoration: const InputDecoration(
-                labelText: 'これまでの最新の標本番号(数字のみ)',
-                helperText: '標本が無ければ 0',
-                border: OutlineInputBorder(),
+              decoration: withClear(
+                const InputDecoration(
+                  labelText: 'これまでの最新の標本番号(数字のみ)',
+                  helperText: '標本が無ければ 0',
+                  border: OutlineInputBorder(),
+                ),
+                _lastNumber,
+                onCleared: () => setState(() {}),
               ),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -86,10 +91,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             const SizedBox(height: 28),
             TextFormField(
               controller: _collector,
-              decoration: const InputDecoration(
-                labelText: '採集者名(英語表記)',
-                hintText: 'Kaoru Yoshihara',
-                border: OutlineInputBorder(),
+              decoration: withClear(
+                const InputDecoration(
+                  labelText: '採集者名(英語表記)',
+                  hintText: 'Kaoru Yoshihara',
+                  border: OutlineInputBorder(),
+                ),
+                _collector,
+                onCleared: () => setState(() {}),
               ),
               textCapitalization: TextCapitalization.words,
               validator: (v) => (v ?? '').trim().isEmpty ? '採集者名を入力してください' : null,

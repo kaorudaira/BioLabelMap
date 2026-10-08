@@ -1,7 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../common/clear_button.dart';import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
 
 import '../../app/theme.dart';
@@ -504,10 +505,14 @@ class _RomajiDialogState extends State<_RomajiDialog> {
           TextField(
             controller: _controller,
             autofocus: true,
-            decoration: const InputDecoration(
-              labelText: '大字のローマ字',
-              hintText: '例: Shimooritate',
-              border: OutlineInputBorder(),
+            decoration: withClear(
+              const InputDecoration(
+                labelText: '大字のローマ字',
+                hintText: '例: Shimooritate',
+                border: OutlineInputBorder(),
+              ),
+              _controller,
+              onCleared: () => setState(() {}),
             ),
             textCapitalization: TextCapitalization.words,
             onChanged: (_) => setState(() {}),

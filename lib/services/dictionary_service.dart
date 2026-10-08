@@ -90,6 +90,21 @@ class DictionaryService {
     return limit == null ? found : found.take(limit).toList();
   }
 
+  /// 入力した項目(和名・属名・種小名・亜種名)が、候補の同じ項目に含まれる種名を、よく使う順に返す。
+  Future<List<SpeciesName>> suggestSpeciesByFields(SpeciesNameQuery query, {int? limit = 5}) async {
+    if (query.isEmpty) return const [];
+    final rows =
+        await (_db.select(_db.speciesDict)
+              ..orderBy([(s) => OrderingTerm.desc(s.useCount), (s) => OrderingTerm.desc(s.updatedAt)]))
+            .get();
+    final found = [
+      for (final r in rows)
+        if (query.matchesFields(vernacular: r.vernacular, genus: r.genus, species: r.species, subspecies: r.subspecies))
+          speciesNameOfEntry(r),
+    ];
+    return limit == null ? found : found.take(limit).toList();
+  }
+
   /// [query] を含む環境・寄主植物を、よく使う順に返す。完全に同じものは除く。
   Future<List<String>> suggestText(DictTextKind kind, String query, {int limit = 5}) async {
     final words = _words(query);

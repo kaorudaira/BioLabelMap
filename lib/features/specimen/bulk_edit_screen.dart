@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../common/clear_button.dart';import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../app/theme.dart';
@@ -413,6 +414,6 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
   Widget _field(TextEditingController c, String label, {int maxLines = 1}) => TextField(
     controller: c,
     maxLines: maxLines,
-    decoration: InputDecoration(labelText: label, border: const OutlineInputBorder(), isDense: true),
+    decoration: withClear(InputDecoration(labelText: label, border: const OutlineInputBorder(), isDense: true), c),
   );
 }

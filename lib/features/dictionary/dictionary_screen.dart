@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../common/clear_button.dart';import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../domain/dictionary.dart';
@@ -171,6 +172,7 @@ class _DictTab extends StatefulWidget {
 
 class _DictTabState extends State<_DictTab> with AutomaticKeepAliveClientMixin {
   var _query = '';
+  final _searchController = TextEditingController();
   final _selected = <int>{};
 
   /// 最後に受け取った一覧(統合の選択肢を作るのに使う)。
@@ -235,11 +237,16 @@ class _DictTabState extends State<_DictTab> with AutomaticKeepAliveClientMixin {
   Widget _searchBar() => Padding(
     padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
     child: TextField(
-      decoration: const InputDecoration(
-        prefixIcon: Icon(Icons.search),
-        hintText: '検索',
-        border: OutlineInputBorder(),
-        isDense: true,
+      controller: _searchController,
+      decoration: withClear(
+        const InputDecoration(
+          prefixIcon: Icon(Icons.search),
+          hintText: '検索',
+          border: OutlineInputBorder(),
+          isDense: true,
+        ),
+        _searchController,
+        onCleared: () => setState(() => _query = ''),
       ),
       onChanged: (v) => setState(() => _query = v),
     ),
@@ -373,7 +380,11 @@ class _TextDialogState extends State<_TextDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(controller: _controller, autofocus: true, decoration: const InputDecoration(border: OutlineInputBorder())),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            decoration: withClear(const InputDecoration(border: OutlineInputBorder()), _controller),
+          ),
           if (widget.macron) ...[
             const SizedBox(height: 8),
             MacronButtons(controller: _controller, onInserted: () {}),
@@ -438,7 +449,10 @@ class _SpeciesDialogState extends State<_SpeciesDialog> {
                 padding: const EdgeInsets.only(top: 8),
                 child: TextField(
                   controller: _controllers[i],
-                  decoration: InputDecoration(labelText: _labels[i], border: const OutlineInputBorder(), isDense: true),
+                  decoration: withClear(
+                    InputDecoration(labelText: _labels[i], border: const OutlineInputBorder(), isDense: true),
+                    _controllers[i],
+                  ),
                 ),
               ),
           ],

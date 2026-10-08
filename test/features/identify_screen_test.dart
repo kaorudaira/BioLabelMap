@@ -7,6 +7,7 @@ import 'package:biolabelmap/domain/species_catalog.dart';
 import 'package:biolabelmap/domain/species_name.dart';
 import 'package:biolabelmap/domain/status.dart';
 import 'package:biolabelmap/features/identification/identify_screen.dart';
+import 'package:biolabelmap/features/specimen/species_name_text.dart';
 import 'package:biolabelmap/services/dictionary_service.dart';
 import 'package:biolabelmap/services/record_service.dart';
 import 'package:biolabelmap/services/service_providers.dart';
@@ -97,15 +98,15 @@ void main() {
 
   testWidgets('属を打つと辞書の候補が出て、選ぶと和名・学名・命名者がまとめて入る', (tester) async {
     await pumpScreen(tester);
-    await tester.enterText(field('属'), 'cara');
+    await tester.enterText(field('属名'), 'cara');
     await settle(tester);
     expect(find.text('オサムシ Carabus insulicola'), findsOneWidget);
 
     await tester.tap(find.text('オサムシ Carabus insulicola'));
     await tester.pump();
     expect(tester.widget<TextField>(field('和名(任意)')).controller!.text, 'オサムシ');
-    expect(tester.widget<TextField>(field('属')).controller!.text, 'Carabus');
-    expect(tester.widget<TextField>(field('種')).controller!.text, 'insulicola');
+    expect(tester.widget<TextField>(field('属名')).controller!.text, 'Carabus');
+    expect(tester.widget<TextField>(field('種小名')).controller!.text, 'insulicola');
     expect(tester.widget<TextField>(field('命名者・年')).controller!.text, 'Chaudoir, 1869');
     await settle(tester);
     // 候補を入れたあとは、候補の一覧を閉じる
@@ -114,8 +115,8 @@ void main() {
 
   testWidgets('種名を入れて保存すると仮同定で履歴に加わり、同定者を覚える', (tester) async {
     await pumpScreen(tester);
-    await tester.enterText(field('属'), 'Carabus');
-    await tester.enterText(field('種'), 'arrowianus');
+    await tester.enterText(field('属名'), 'Carabus');
+    await tester.enterText(field('種小名'), 'arrowianus');
     await tester.enterText(field('同定者'), 'K. Yoshihara');
     await settle(tester);
     await tester.tap(find.text('同定を追加'));
@@ -133,7 +134,7 @@ void main() {
 
   testWidgets('「同定済み」に切り替えて保存すると、同定済みになる', (tester) async {
     await pumpScreen(tester);
-    await tester.enterText(field('種'), 'x');
+    await tester.enterText(field('種小名'), 'x');
     await tester.pump();
     await tester.ensureVisible(find.text('同定済み'));
     await tester.pump();
@@ -165,7 +166,7 @@ void main() {
   testWidgets('複数の標本を選んだときは、全てに同じ同定を追加する', (tester) async {
     await pumpScreen(tester, count: 3);
     expect(find.text('同定入力(3件)'), findsOneWidget);
-    await tester.enterText(field('種'), 'x');
+    await tester.enterText(field('種小名'), 'x');
     await tester.pump();
     await tester.tap(find.text('3件に同定を追加'));
     await tester.pumpAndSettle();
@@ -179,7 +180,7 @@ void main() {
 
   testWidgets('直前の同定を初期値にして、手直しできる', (tester) async {
     await pumpScreen(tester, initial: SpeciesName(genus: 'Carabus', species: 'old', authorship: '(L., 1758)'));
-    expect(tester.widget<TextField>(field('種')).controller!.text, 'old');
+    expect(tester.widget<TextField>(field('種小名')).controller!.text, 'old');
     expect(tester.widget<TextField>(field('命名者・年')).controller!.text, '(L., 1758)');
   });
 
@@ -187,7 +188,7 @@ void main() {
     await pumpScreen(tester);
     await tester.tap(field('命名者・年'));
     await tester.pump();
-    await tester.tap(find.text('ō'));
+    await tester.tap(find.text('ō').first);
     await tester.pump();
     expect(tester.widget<TextField>(field('命名者・年')).controller!.text, 'ō');
   });
@@ -205,8 +206,8 @@ void main() {
       await pumpScreen(tester, catalog: catalog);
       await tester.enterText(field('和名(任意)'), 'クボタヒメハネカクシ');
       await tester.pump();
-      expect(text(tester, '属'), 'Atheta');
-      expect(text(tester, '種'), 'transfuga');
+      expect(text(tester, '属名'), 'Atheta');
+      expect(text(tester, '種小名'), 'transfuga');
       expect(text(tester, '命名者・年'), '(Sharp, 1874)');
       expect(find.textContaining('目録から入力しました'), findsOneWidget);
     });
@@ -214,18 +215,18 @@ void main() {
     testWidgets('属と種を入力したら、和名と命名者・年が自動で入る。入力済みの欄は書き換えない', (tester) async {
       await pumpScreen(tester, catalog: catalog);
       await tester.enterText(field('命名者・年'), '自分の入力');
-      await tester.enterText(field('属'), 'atheta');
-      await tester.enterText(field('種'), 'transfuga');
+      await tester.enterText(field('属名'), 'atheta');
+      await tester.enterText(field('種小名'), 'transfuga');
       await tester.pump();
       expect(text(tester, '和名(任意)'), 'クボタヒメハネカクシ');
       expect(text(tester, '命名者・年'), '自分の入力');
-      expect(text(tester, '属'), 'atheta');
+      expect(text(tester, '属名'), 'atheta');
     });
 
     testWidgets('自動入力のあとに消した欄は、同じ種に一致している間は入れ直さない', (tester) async {
       await pumpScreen(tester, catalog: catalog);
-      await tester.enterText(field('属'), 'Atheta');
-      await tester.enterText(field('種'), 'transfuga');
+      await tester.enterText(field('属名'), 'Atheta');
+      await tester.enterText(field('種小名'), 'transfuga');
       await tester.pump();
       expect(text(tester, '命名者・年'), '(Sharp, 1874)');
 
@@ -237,8 +238,8 @@ void main() {
 
     testWidgets('亜種が複数ある種は、1つに決まらないので自動入力しない', (tester) async {
       await pumpScreen(tester, catalog: catalog);
-      await tester.enterText(field('属'), 'Coraebus');
-      await tester.enterText(field('種'), 'ignotus');
+      await tester.enterText(field('属名'), 'Coraebus');
+      await tester.enterText(field('種小名'), 'ignotus');
       await tester.pump();
       expect(text(tester, '和名(任意)'), '');
       expect(find.textContaining('目録から入力しました'), findsNothing);
@@ -252,7 +253,7 @@ void main() {
 
       await tester.tap(find.textContaining('奄美亜種'));
       await tester.pump();
-      expect(text(tester, '亜種'), 'shibatai');
+      expect(text(tester, '亜種名'), 'shibatai');
       expect(text(tester, '命名者・年'), 'Y. Kurosawa, 1963');
     });
 
@@ -266,11 +267,11 @@ void main() {
           '"D","Another ignotus Bates, 1888"',
         ),
       );
-      await tester.enterText(field('属'), 'Coraebus');
+      await tester.enterText(field('属名'), 'Coraebus');
       await settle(tester);
       expect(find.text('目録'), findsNWidgets(3));
 
-      await tester.enterText(field('種'), 'ignotus');
+      await tester.enterText(field('種小名'), 'ignotus');
       await settle(tester);
       expect(find.text('目録'), findsNWidgets(2));
       expect(find.textContaining('Another'), findsNothing);
@@ -280,7 +281,7 @@ void main() {
       await pumpScreen(tester, catalog: catalog);
       await tester.enterText(field('和名(任意)'), 'クボタヒメハネカクシ');
       await tester.pump();
-      expect(text(tester, '属'), 'Atheta');
+      expect(text(tester, '属名'), 'Atheta');
 
       // 和名を1文字ずつ消す。途中も、消し切ったときも、勝手に入り直さない
       var v = 'クボタヒメハネカクシ';
@@ -305,7 +306,7 @@ void main() {
 
       await tester.tap(find.text('クリア'));
       await tester.pump();
-      for (final label in ['和名(任意)', '属', '種', '亜種', '命名者・年']) {
+      for (final label in ['和名(任意)', '属名', '種小名', '亜種名', '命名者・年']) {
         expect(text(tester, label), '', reason: label);
       }
       expect(find.textContaining('目録から入力しました'), findsNothing);
@@ -313,13 +314,13 @@ void main() {
 
       await tester.enterText(field('和名(任意)'), 'クボタヒメハネカクシ');
       await tester.pump();
-      expect(text(tester, '属'), 'Atheta');
+      expect(text(tester, '属名'), 'Atheta');
     });
 
     testWidgets('何も入力していないとき、クリアは押せない。同定者と同定日は消さない', (tester) async {
       await pumpScreen(tester, catalog: catalog, lastIdentifier: 'K. Yoshihara');
       expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'クリア')).onPressed, isNull);
-      await tester.enterText(field('種'), 'x');
+      await tester.enterText(field('種小名'), 'x');
       await tester.pump();
       await tester.tap(find.text('クリア'));
       await tester.pump();
@@ -331,7 +332,7 @@ void main() {
         [for (var i = 0; i < 12; i++) '"種${String.fromCharCode(0x30A2 + i * 2)}","Carabus species${String.fromCharCode(97 + i)} Bates, 1888"'].join('\n'),
       );
       await pumpScreen(tester, catalog: many);
-      await tester.enterText(field('属'), 'carabus');
+      await tester.enterText(field('属名'), 'carabus');
       await settle(tester);
 
       expect(find.text('候補 13件(選ぶとまとめて入ります)'), findsOneWidget);
@@ -352,14 +353,101 @@ void main() {
         ].join('\n'),
       );
       await pumpScreen(tester, catalog: many);
-      await tester.enterText(field('属'), 'carabus');
+      await tester.enterText(field('属名'), 'carabus');
       await settle(tester);
 
       expect(find.text('候補 31件のうち、和名の50音順で 20件(さらに入力すると絞り込めます)'), findsOneWidget);
       // 先頭は ア。辞書の「オサムシ」も、和名の順(オの位置)に入る
-      final titles = tester.widgetList<ListTile>(find.byType(ListTile)).map((t) => (t.title! as Text).data!).toList();
+      final titles = tester.widgetList<ListTile>(find.byType(ListTile)).map((t) => (t.title! as SpeciesNameText).name.label).toList();
       expect(titles.first, startsWith('ア '));
       expect(titles.map((t) => t.split(' ').first).toList(), [...titles.map((t) => t.split(' ').first)]..sort());
+    });
+
+    testWidgets('属名の欄に打った文字は属名だけを、種小名の欄に打った文字は種小名だけを探す', (tester) async {
+      final fields = SpeciesCatalog.parseCsv(
+        '"ア","Carabus ignotus Bates, 1883"\n'
+        '"イ","Another carabus Bates, 1883"\n'
+        '"カラバス","Third species Bates, 1883"',
+      );
+      await pumpScreen(tester, catalog: fields);
+
+      // 属名の欄:属名に carabus を含む種だけ(種小名や和名に含まれるものは出ない)
+      await tester.enterText(field('属名'), 'carabus');
+      await settle(tester);
+      expect(find.textContaining('Carabus ignotus'), findsOneWidget);
+      expect(find.textContaining('Another carabus'), findsNothing);
+      expect(find.text('カラバス Third species'), findsNothing);
+
+      // 属名を消して、種小名の欄に同じ文字:種小名に carabus を含む種だけ
+      await tester.tap(find.text('クリア'));
+      await tester.pump();
+      await tester.enterText(field('種小名'), 'carabus');
+      await settle(tester);
+      expect(find.textContaining('Another carabus'), findsOneWidget);
+      expect(find.textContaining('Carabus ignotus'), findsNothing);
+    });
+
+    testWidgets('亜種名の欄に打った文字は、亜種名だけを探す', (tester) async {
+      final subs = SpeciesCatalog.parseCsv(
+        '"ア　基亜種","Coraebus ignotus ignotus Saunders, 1873"\n'
+        '"ア　奄美亜種","Coraebus ignotus shibatai Kurosawa, 1963"\n'
+        '"イ","Another shibatai Bates, 1883"',
+      );
+      await pumpScreen(tester, catalog: subs);
+      await tester.enterText(field('亜種名'), 'shiba');
+      await settle(tester);
+      expect(find.textContaining('Coraebus ignotus shibatai'), findsOneWidget);
+      expect(find.textContaining('Coraebus ignotus ignotus'), findsNothing);
+      // 亜種名を持たない種(2番目の語が種小名)は、亜種名の検索では出ない
+      expect(find.textContaining('Another shibatai'), findsNothing);
+    });
+
+    testWidgets('候補の名前が長くても、折り返して全体を表示する(省略しない)', (tester) async {
+      tester.view.physicalSize = const Size(360, 1800);
+      tester.view.devicePixelRatio = 1;
+      final long = SpeciesCatalog.parseCsv(
+        '"ワモンヒョウタンゾウムシ　屋久島亜種","Sympiezomias lewisi albidus Nakamura & Morimoto, 2015"',
+      );
+      await pumpScreen(tester, catalog: long);
+      await tester.enterText(field('属名'), 'Sympiezomias');
+      await settle(tester);
+
+      final tile = find.ancestor(of: find.textContaining('ワモンヒョウタンゾウムシ'), matching: find.byType(ListTile));
+      expect(tile, findsOneWidget);
+      final title = tester.widget<ListTile>(tile).title! as SpeciesNameText;
+      expect(title.name.label, contains('Sympiezomias lewisi albidus'));
+      // 省略(…)にせず、折り返す:Text に行数の上限が無い
+      final rich = tester.widget<RichText>(find.descendant(of: tile, matching: find.byType(RichText)).first);
+      expect(rich.maxLines, isNull);
+      expect(rich.overflow, isNot(TextOverflow.ellipsis));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('同定者の欄の下にも、特殊文字のボタンがあり、同定者の欄に入る(種名の下のボタンは入らない)', (tester) async {
+      await pumpScreen(tester);
+      await tester.tap(field('同定者'));
+      await tester.pump();
+      // 種名の下と、同定者の下に1組ずつ
+      expect(find.text('ô'), findsNWidgets(2));
+      await tester.tap(find.text('ô').last);
+      await tester.pump();
+      expect(text(tester, '同定者'), 'ô');
+      expect(text(tester, '命名者・年'), '');
+
+      // 種名の欄を触っていれば、種名の下のボタンは、その欄に入る
+      await tester.tap(field('命名者・年'));
+      await tester.pump();
+      await tester.tap(find.text('ç').first);
+      await tester.pump();
+      expect(text(tester, '命名者・年'), 'ç');
+      expect(text(tester, '同定者'), 'ô');
+    });
+
+    testWidgets('人名の特殊文字は、マクロンのほか、アクセントなどの文字を含む', (tester) async {
+      await pumpScreen(tester);
+      for (final c in ['ō', 'ū', 'Ō', 'Ū', 'ā', 'ô', 'û', 'ä', 'ö', 'ü', 'ß', 'é', 'è', 'ñ', 'ø', 'å', 'ł', 'š']) {
+        expect(find.text(c), findsNWidgets(2), reason: c);
+      }
     });
 
     testWidgets('自分が使った種(辞書)を先に出し、同じ種は目録と重ねて出さない', (tester) async {
@@ -370,9 +458,9 @@ void main() {
           '"オサムシモドキ","Carabus insulicolax Chaudoir, 1869"',
         ),
       );
-      await tester.enterText(field('属'), 'carabus');
+      await tester.enterText(field('属名'), 'carabus');
       await settle(tester);
-      final titles = tester.widgetList<ListTile>(find.byType(ListTile)).map((t) => (t.title! as Text).data).toList();
+      final titles = tester.widgetList<ListTile>(find.byType(ListTile)).map((t) => (t.title! as SpeciesNameText).name.label).toList();
       expect(titles, ['オサムシ Carabus insulicola', 'オサムシモドキ Carabus insulicolax']);
       expect(find.text('目録'), findsOneWidget);
     });
