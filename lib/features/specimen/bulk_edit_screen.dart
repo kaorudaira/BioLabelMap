@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../common/clear_button.dart';import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../common/clear_button.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../app/theme.dart';
