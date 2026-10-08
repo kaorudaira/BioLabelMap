@@ -7,6 +7,7 @@ import '../domain/models/collection_period.dart';
 import '../domain/models/place_info.dart';
 import '../domain/sampling_method.dart';
 import '../domain/status.dart';
+import 'locality_lookup_service.dart';
 import 'settings_service.dart';
 
 /// 記録の地点。既存の地点を使うか、新しい位置か。
@@ -248,23 +249,7 @@ class RecordService {
     final ja = _clean(place.localityJa);
     final en = _clean(place.localityEn);
     if (code == null || ja == null || en == null) return;
-
-    await _db.into(_db.placeRomajiDict).insert(
-      PlaceRomajiDictCompanion.insert(
-        municipalityCode: code,
-        localityJa: ja,
-        localityEn: en,
-        useCount: const Value(1),
-      ),
-      onConflict: DoUpdate.withExcluded(
-        (old, excluded) => PlaceRomajiDictCompanion.custom(
-          localityEn: excluded.localityEn,
-          useCount: old.useCount + const Constant(1),
-          updatedAt: currentDateAndTime,
-        ),
-        target: [_db.placeRomajiDict.municipalityCode, _db.placeRomajiDict.localityJa],
-      ),
-    );
+    await rememberPlaceRomaji(_db, municipalityCode: code, localityJa: ja, localityEn: en);
   }
 
   static CatalogNumberFormat _formatOf(AppSettingsRow s) =>

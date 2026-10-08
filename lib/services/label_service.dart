@@ -7,6 +7,7 @@ import '../domain/label/data_label_builder.dart';
 import '../domain/label/data_label_layout.dart';
 import '../domain/models/collection_period.dart';
 import '../domain/status.dart';
+import 'locality_lookup_service.dart';
 
 /// ラベル出力の候補になる標本1件(標本・採集・地点をまとめたもの)。
 class LabelCandidate {
@@ -22,6 +23,12 @@ class LabelCandidate {
   bool get pendingEnrichment =>
       locality.elevationStatus == FetchStatus.pending ||
       locality.placeStatus == FetchStatus.pending;
+
+  /// 大字は取得できたが、そのローマ字が未入力。
+  /// 圏外で記録して、あとから地名を補完した初めての場所で起きる。
+  bool get missingLocalityRomaji =>
+      (locality.localityJa?.trim().isNotEmpty ?? false) &&
+      (locality.localityEn?.trim().isEmpty ?? true);
 
   /// データラベルの材料。標高は設定の丸めで丸め、採集者名は `K. YOSHIHARA` の形にする。
   DataLabelSource toSource(ElevationRounding rounding) => DataLabelSource(
@@ -72,6 +79,34 @@ class LabelService {
           ),
       ],
     );
+  }
+
+  /// 大字のローマ字を入れる。辞書にも溜め、同じ大字でローマ字が未入力の
+  /// ほかの地点にも同じ綴りを入れる(辞書があれば補完で入るのと同じ結果にする)。
+  Future<void> setLocalityRomaji(int localityId, String localityEn) {
+    final en = localityEn.trim();
+    if (en.isEmpty) {
+      throw ArgumentError.value(localityEn, 'localityEn', 'ローマ字を入力してください');
+    }
+    return _db.transaction(() async {
+      final locality = await (_db.select(_db.localities)..where((l) => l.id.equals(localityId))).getSingle();
+      final code = locality.municipalityCode;
+      final ja = locality.localityJa;
+
+      await (_db.update(_db.localities)..where((l) => l.id.equals(localityId)))
+          .write(LocalitiesCompanion(localityEn: Value(en)));
+      if (code == null || ja == null) return;
+
+      await rememberPlaceRomaji(_db, municipalityCode: code, localityJa: ja, localityEn: en);
+      await (_db.update(_db.localities)
+            ..where(
+              (l) =>
+                  l.municipalityCode.equals(code) &
+                  l.localityJa.equals(ja) &
+                  (l.localityEn.isNull() | l.localityEn.trim().equals('')),
+            ))
+          .write(LocalitiesCompanion(localityEn: Value(en)));
+    });
   }
 
   /// 印刷済みにする。印字した標高と地名を標本ごとに残し、
