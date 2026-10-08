@@ -287,6 +287,7 @@ void main() {
           period: CollectionPeriod.singleDay(CalendarDate(2026, 6, 20)),
           recordedAt: DateTime(2026, 6, 20),
           samplingMethod: SamplingMethod.sweeping,
+          confirmNow: true,
           habitat: 'ブナ林',
           count: 3,
         ),
@@ -508,6 +509,7 @@ void _detailActionTests() {
             period: CollectionPeriod.singleDay(CalendarDate(2026, 6, 20)),
             recordedAt: DateTime(2026, 6, 20),
             samplingMethod: SamplingMethod.sweeping,
+            confirmNow: true,
           ),
         );
         return SpecimenService(db).detail(r.specimenIds.single);

@@ -232,6 +232,39 @@ class SpecimenEditService {
     );
   }
 
+  /// 採集の、番号が未確定(仮)の標本の数を、[count] 件にそろえる(要件定義 第14章)。
+  /// 増やすときは、仮の標本を足す。減らすときは、保存した順の新しいほうから、仮の標本を削除する
+  /// (番号を使っていないので欠番にならず、ごみ箱にも入れない)。[keepSpecimenId] の標本と、
+  /// 同定の履歴がある標本は、減らさない。減らしきれないときは、何も変えずにエラーにする。
+  Future<void> setProvisionalCount(int eventId, int count, {int? keepSpecimenId}) {
+    if (count < 1) throw ArgumentError.value(count, 'count', '個体数は1以上です');
+    return _db.transaction(() async {
+      final provisional =
+          await (_db.select(_db.specimens)
+                ..where((s) => s.collectionEventId.equals(eventId) & s.catalogNumber.isNull() & s.deletedAt.isNull())
+                ..orderBy([(s) => OrderingTerm.asc(s.id)]))
+              .get();
+      if (count > provisional.length) {
+        for (var i = provisional.length; i < count; i++) {
+          await _db.into(_db.specimens).insert(SpecimensCompanion.insert(collectionEventId: eventId));
+        }
+        return;
+      }
+      final withHistory = {
+        for (final i in await _db.select(_db.identifications).get()) i.specimenId,
+      };
+      final removable = [
+        for (final s in provisional.reversed)
+          if (s.id != keepSpecimenId && !withHistory.contains(s.id)) s.id,
+      ];
+      final needed = provisional.length - count;
+      if (removable.length < needed) {
+        throw StateError('同定の入力がある標本は減らせません。先に、その標本をごみ箱に移してください');
+      }
+      await (_db.delete(_db.specimens)..where((s) => s.id.isIn(removable.take(needed)))).go();
+    });
+  }
+
   // ---- ごみ箱 ----
 
   /// 標本をごみ箱に移す。標本番号はそのまま残る。

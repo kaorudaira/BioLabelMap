@@ -7,6 +7,7 @@ import 'package:biolabelmap/domain/status.dart';
 import 'package:biolabelmap/services/draft_service.dart';
 import 'package:biolabelmap/services/record_service.dart';
 import 'package:biolabelmap/services/settings_service.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -31,6 +32,7 @@ void main() {
     ),
     int count = 1,
     int? draftId,
+    bool confirmNow = false,
   }) => RecordInput(
     position: position,
     period: CollectionPeriod.singleDay(CalendarDate(2026, 6, 20)),
@@ -39,6 +41,7 @@ void main() {
     habitat: '  ブナ林  ',
     count: count,
     draftId: draftId,
+    confirmNow: confirmNow,
   );
 
   group('初回設定', () {
@@ -47,7 +50,6 @@ void main() {
         () => records.save(input()),
         throwsA(isA<CatalogNotInitializedException>()),
       );
-      expect(await records.previewCatalogRange(1), isNull);
     });
 
     test('最新番号+1から始まる。2回目は設定できない', () async {
@@ -58,7 +60,8 @@ void main() {
 
     test('標本が無ければ 0 を入力し、1から始まる', () async {
       await settings.initializeCatalog(0);
-      expect(await records.previewCatalogRange(1), 'KYC00001');
+      final result = await records.save(input(confirmNow: true));
+      expect(result.catalogRange, 'KYC00001');
     });
   });
 
@@ -69,7 +72,8 @@ void main() {
 
     test('接頭辞の前後の空白は除く', () async {
       await settings.setCatalogFormat(prefix: ' ABC ', digits: 4);
-      expect(await records.previewCatalogRange(1), 'ABC0123');
+      final result = await records.save(input(confirmNow: true));
+      expect(result.catalogRange, 'ABC0123');
     });
 
     test('空の接頭辞と範囲外の桁数は受け付けない', () async {
@@ -79,10 +83,10 @@ void main() {
     });
 
     test('これから発行する番号が既存の番号と同じ文字列になる書式を見つける', () async {
-      await records.save(input()); // KYC00123。次は124
+      await records.save(input(confirmNow: true)); // KYC00123。次は124
       // 以前 `A1`+3桁の書式で登録した 5番
       await db.into(db.specimens).insert(
-        SpecimensCompanion.insert(collectionEventId: 1, catalogNumber: 5, catalogText: 'A1005'),
+        SpecimensCompanion.insert(collectionEventId: 1, catalogNumber: const Value(5), catalogText: const Value('A1005')),
       );
 
       // `A`+4桁では、これから発行する 1005番が `A1005` になる
@@ -90,6 +94,11 @@ void main() {
       // 同じ文字列になる番号が、すでに発行済みの範囲(124未満)なら重ならない
       expect(await settings.findFormatConflict(prefix: 'A1', digits: 3), isNull);
       expect(await settings.findFormatConflict(prefix: 'KYC0', digits: 4), isNull);
+      expect(await settings.findFormatConflict(prefix: 'KYC', digits: 5), isNull);
+    });
+
+    test('番号が未確定(仮)の標本は、書式の重複の確認に影響しない', () async {
+      await records.save(input(count: 2));
       expect(await settings.findFormatConflict(prefix: 'KYC', digits: 5), isNull);
     });
 
@@ -105,20 +114,26 @@ void main() {
       await settings.setCollectorName('Kaoru Yoshihara');
     });
 
-    test('作成数15で、1つの採集に連番の標本15件がぶら下がる', () async {
-      expect(await records.previewCatalogRange(15), 'KYC00123〜KYC00137');
-
+    test('作成数15で、1つの採集に標本15件がぶら下がる。番号は付けず(仮)、次の番号も進めない', () async {
       final result = await records.save(input(count: 15));
 
-      expect(result.catalogRange, 'KYC00123〜KYC00137');
+      expect(result.catalogRange, isNull);
       expect(result.specimenIds, hasLength(15));
       final specimens = await db.select(db.specimens).get();
-      expect(specimens.map((s) => s.catalogText),
-          [for (var n = 123; n <= 137; n++) 'KYC00$n']);
-      expect(specimens.map((s) => s.collectionEventId).toSet(),
-          {result.collectionEventId});
+      expect(specimens.map((s) => s.catalogNumber), everyElement(isNull));
+      expect(specimens.map((s) => s.catalogText), everyElement(isNull));
+      expect(specimens.map((s) => s.collectionEventId).toSet(), {result.collectionEventId});
       expect(await db.select(db.collectionEvents).get(), hasLength(1));
       expect(await db.select(db.localities).get(), hasLength(1));
+      expect((await settings.read()).nextCatalogNumber, 123);
+    });
+
+    test('保存と同時に番号を確定すると、連番の標本15件になり、次の番号が進む', () async {
+      final result = await records.save(input(count: 15, confirmNow: true));
+
+      expect(result.catalogRange, 'KYC00123〜KYC00137');
+      final specimens = await db.select(db.specimens).get();
+      expect(specimens.map((s) => s.catalogText), [for (var n = 123; n <= 137; n++) 'KYC00$n']);
       expect((await settings.read()).nextCatalogNumber, 138);
     });
 
@@ -195,36 +210,12 @@ void main() {
       expect(await db.select(db.localities).get(), hasLength(1));
     });
 
-    test('「この地点に追加」は既存の地点を使い、番号は続きから', () async {
-      final first = await records.save(input(count: 3));
-      final second =
-          await records.save(input(position: ExistingLocality(first.localityId)));
+    test('「この地点に追加」は既存の地点を使う。番号を確定するときは続きから', () async {
+      final first = await records.save(input(count: 3, confirmNow: true));
+      final second = await records.save(input(position: ExistingLocality(first.localityId), confirmNow: true));
       expect(second.localityId, first.localityId);
       expect(second.catalogRange, 'KYC00126');
       expect(second.collectionEventId, isNot(first.collectionEventId));
-    });
-
-    test('途中で失敗したら全部取り消され、番号も進まない', () async {
-      // 次に発行する番号を、手入力で先に使っておく(重複させる)
-      final event = await records.save(input());
-      await db.into(db.specimens).insert(SpecimensCompanion.insert(
-        collectionEventId: event.collectionEventId,
-        catalogNumber: 126,
-        catalogText: 'KYC00126',
-      ));
-      final before = await db.select(db.specimens).get();
-      final eventsBefore = await db.select(db.collectionEvents).get();
-
-      // 124, 125 は入るが 126 で重複 → 全部取り消し
-      await expectLater(
-        records.save(input(count: 3)),
-        throwsA(isA<SqliteException>()),
-      );
-
-      expect(await db.select(db.specimens).get(), hasLength(before.length));
-      expect(await db.select(db.collectionEvents).get(),
-          hasLength(eventsBefore.length));
-      expect((await settings.read()).nextCatalogNumber, 124);
     });
 
     test('存在しない地点を指定したら保存しない', () async {
@@ -232,13 +223,15 @@ void main() {
         records.save(input(position: const ExistingLocality(9999))),
         throwsA(isA<StateError>()),
       );
+      expect(await db.select(db.specimens).get(), isEmpty);
+      expect(await db.select(db.collectionEvents).get(), isEmpty);
       expect((await settings.read()).nextCatalogNumber, 123);
     });
 
-    test('接頭辞と桁数を変えても、既存の番号は変わらない', () async {
-      await records.save(input());
+    test('接頭辞と桁数を変えても、確定済みの番号は変わらない', () async {
+      await records.save(input(confirmNow: true));
       await settings.setCatalogFormat(prefix: 'ABC', digits: 4);
-      await records.save(input());
+      await records.save(input(confirmNow: true));
 
       final texts = (await db.select(db.specimens).get()).map((s) => s.catalogText);
       expect(texts, ['KYC00123', 'ABC0124']);

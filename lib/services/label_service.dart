@@ -86,15 +86,20 @@ class LabelService {
   /// ごみ箱を除く標本を、標本番号順に返す。DB が変わるたびに流れ直す。
   Stream<List<LabelCandidate>> watchCandidates() => _db
       .changesOf({_db.specimens, _db.collectionEvents, _db.localities, _db.identifications})
-      .asyncMap((_) => _load());
+      .asyncMap((_) => loadCandidates());
 
-  Future<List<LabelCandidate>> _load() async {
+  Future<List<LabelCandidate>> loadCandidates() async {
     final query = _db.select(_db.specimens).join([
       innerJoin(_db.collectionEvents, _db.collectionEvents.id.equalsExp(_db.specimens.collectionEventId)),
       innerJoin(_db.localities, _db.localities.id.equalsExp(_db.collectionEvents.localityId)),
     ])
       ..where(_db.specimens.deletedAt.isNull())
-      ..orderBy([OrderingTerm.asc(_db.specimens.catalogNumber)]);
+      ..orderBy([
+        // 番号が未確定(仮)の標本は、確定済みの後ろに、保存した順に並べる
+        OrderingTerm.asc(_db.specimens.catalogNumber.isNull()),
+        OrderingTerm.asc(_db.specimens.catalogNumber),
+        OrderingTerm.asc(_db.specimens.id),
+      ]);
     // ↑ join は SQL の JOIN。readTable で各テーブルの行を取り出す(JPA の Tuple に近い)
     final rows = await query.get();
 

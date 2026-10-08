@@ -4,6 +4,7 @@ import 'package:biolabelmap/domain/models/collection_period.dart';
 import 'package:biolabelmap/domain/sampling_method.dart';
 import 'package:biolabelmap/domain/status.dart';
 import 'package:biolabelmap/features/label/label_screen.dart';
+import 'package:biolabelmap/services/catalog_number_service.dart';
 import 'package:biolabelmap/services/label_service.dart';
 import 'package:biolabelmap/services/record_service.dart';
 import 'package:biolabelmap/services/service_providers.dart';
@@ -13,6 +14,19 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+/// 番号の確定の呼び出しを記録する(確定そのものはしない)。
+class _RecordingNumbers extends CatalogNumberService {
+  _RecordingNumbers(super.db, this.calls);
+
+  final List<List<int>> calls;
+
+  @override
+  Future<ConfirmResult> confirm(Iterable<int> specimenIds) async {
+    calls.add(specimenIds.toList());
+    return ConfirmResult(count: specimenIds.length);
+  }
+}
 
 void main() {
   late AppDatabase db;
@@ -25,6 +39,7 @@ void main() {
     WidgetTester tester, {
     Set<int> Function(List<LabelCandidate>)? pick,
     bool mismatchSecond = false,
+    List<List<int>>? confirmCalls,
   }) async {
     tester.view.physicalSize = const Size(800, 1800);
     tester.view.devicePixelRatio = 1;
@@ -63,6 +78,7 @@ void main() {
         overrides: [
           labelCandidatesProvider.overrideWith((ref) => Stream.value(candidates!)),
           settingsProvider.overrideWith((ref) => Stream.value(settings)),
+          if (confirmCalls != null) catalogNumberServiceProvider.overrideWithValue(_RecordingNumbers(db, confirmCalls)),
         ],
         child: MaterialApp(home: LabelScreen(specimenIds: pick?.call(candidates!))),
       ),
@@ -125,5 +141,34 @@ void main() {
     await pumpScreen(tester);
     expect(find.text('ラベルと不一致'), findsNothing);
     expect(find.text('PDFを作成(4枚・1ページ)'), findsOneWidget);
+  });
+
+  testWidgets('番号が未確定の標本があるとき、コレクションラベルに番号が要るので、確定してから出力するか案内する。やめれば、確定しない', (tester) async {
+    final calls = <List<int>>[];
+    await pumpScreen(tester, confirmCalls: calls);
+    await tester.tap(find.textContaining('PDFを作成'));
+    // 作成中は進行表示が回り続けるので、pumpAndSettle は使えない
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    // 未印刷の2件(印刷済みの1件は対象外)が、番号未確定
+    expect(find.text('番号が未確定の標本が2件あります'), findsOneWidget);
+    expect(find.textContaining('確定した番号は戻せません'), findsOneWidget);
+    expect(find.text('番号を確定して出力'), findsOneWidget);
+
+    await tester.tap(find.text('やめる'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(calls, isEmpty);
+  });
+
+  testWidgets('同定ラベルだけを出力するときは、番号が要らないので、確定の案内を出さない', (tester) async {
+    final calls = <List<int>>[];
+    await pumpScreen(tester, confirmCalls: calls);
+    await tester.tap(find.text('同定のみ'));
+    await tester.pump();
+    await tester.tap(find.textContaining('PDFを作成'));
+    await tester.pump();
+    expect(find.textContaining('番号が未確定の標本が'), findsNothing);
+    expect(calls, isEmpty);
   });
 }

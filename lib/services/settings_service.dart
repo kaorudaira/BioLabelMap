@@ -73,9 +73,9 @@ class SettingsService {
     final format = CatalogNumberFormat(prefix: prefix.trim(), digits: digits);
     final texts = await (_db.selectOnly(_db.specimens)
           ..addColumns([_db.specimens.catalogText]))
-        .map((row) => row.read(_db.specimens.catalogText)!)
+        .map((row) => row.read(_db.specimens.catalogText))
         .get();
-    for (final text in texts) {
+    for (final text in texts.whereType<String>()) {
       if (!text.startsWith(format.prefix)) continue;
       final number = int.tryParse(text.substring(format.prefix.length));
       if (number == null || number < next) continue;

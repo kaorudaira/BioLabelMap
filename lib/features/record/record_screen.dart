@@ -8,7 +8,6 @@ import 'package:latlong2/latlong.dart';
 import '../../app/theme.dart';
 import '../../core/db/database.dart';
 import '../../core/db/database_provider.dart';
-import '../../domain/catalog_number.dart';
 import '../../domain/label/data_label_builder.dart';
 import '../../domain/label/date_range_format.dart';
 import '../../domain/models/calendar_date.dart';
@@ -160,7 +159,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
     unawaited(ref.read(enrichmentSchedulerProvider).trigger());
     if (!mounted) return;
 
-    _showMessage('${result.catalogRange} を保存しました');
+    _showMessage('${result.specimenIds.length}件を、番号未確定で保存しました');
     if (addAnother) {
       setState(() => _closing = true);
       context.pushReplacement('/record', extra: RecordArgs(_form.nextAtSameLocality(result.localityId)));
@@ -476,14 +475,8 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
   }
 
   Widget _specimenBlock(AppSettingsRow? settings) {
-    final next = settings?.nextCatalogNumber;
-    final format = CatalogNumberFormat(
-      prefix: settings?.catalogPrefix ?? 'KYC',
-      digits: settings?.catalogDigits ?? 5,
-    );
-    final numberText = widget.args.draftId != null || next == null
-        ? '番号は保存時に決まります'
-        : '${format.formatRange(next, _form.count)} を発行';
+    // 番号は、保存した標本の個体数などを直してから、確定の操作で付ける(要件定義 第14章)
+    const numberText = '番号は確定時に決まります';
 
     return FormBlock(
       color: BlockColors.specimen,

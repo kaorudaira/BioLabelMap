@@ -89,12 +89,12 @@ class Specimens extends Table {
   IntColumn get collectionEventId =>
       integer().references(CollectionEvents, #id)();
 
-  /// 標本番号の数値部分。
-  IntColumn get catalogNumber => integer()();
+  /// 標本番号の数値部分。null は「番号未確定(仮)」で、確定の操作で割り当てる(要件定義 第14章)。
+  IntColumn get catalogNumber => integer().nullable()();
 
   /// 作成時の書式で作った標本番号(`KYC00123`)。接頭辞を変えても変わらない。
   /// ごみ箱の中も含めて重複させない。
-  TextColumn get catalogText => text().unique()();
+  TextColumn get catalogText => text().nullable().unique()();
 
   TextColumn get sex => textEnum<Sex>().nullable()();
   TextColumn get remarks => text().nullable()();

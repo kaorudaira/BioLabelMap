@@ -2044,9 +2044,9 @@ class $SpecimensTable extends Specimens
   late final GeneratedColumn<int> catalogNumber = GeneratedColumn<int>(
     'catalog_number',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _catalogTextMeta = const VerificationMeta(
     'catalogText',
@@ -2055,9 +2055,9 @@ class $SpecimensTable extends Specimens
   late final GeneratedColumn<String> catalogText = GeneratedColumn<String>(
     'catalog_text',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
   @override
@@ -2184,8 +2184,6 @@ class $SpecimensTable extends Specimens
           _catalogNumberMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_catalogNumberMeta);
     }
     if (data.containsKey('catalog_text')) {
       context.handle(
@@ -2195,8 +2193,6 @@ class $SpecimensTable extends Specimens
           _catalogTextMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_catalogTextMeta);
     }
     if (data.containsKey('remarks')) {
       context.handle(
@@ -2260,11 +2256,11 @@ class $SpecimensTable extends Specimens
       catalogNumber: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}catalog_number'],
-      )!,
+      ),
       catalogText: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}catalog_text'],
-      )!,
+      ),
       sex: $SpecimensTable.$convertersexn.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -2313,12 +2309,12 @@ class Specimen extends DataClass implements Insertable<Specimen> {
   final int id;
   final int collectionEventId;
 
-  /// 標本番号の数値部分。
-  final int catalogNumber;
+  /// 標本番号の数値部分。null は「番号未確定(仮)」で、確定の操作で割り当てる(要件定義 第14章)。
+  final int? catalogNumber;
 
   /// 作成時の書式で作った標本番号(`KYC00123`)。接頭辞を変えても変わらない。
   /// ごみ箱の中も含めて重複させない。
-  final String catalogText;
+  final String? catalogText;
   final Sex? sex;
   final String? remarks;
 
@@ -2335,8 +2331,8 @@ class Specimen extends DataClass implements Insertable<Specimen> {
   const Specimen({
     required this.id,
     required this.collectionEventId,
-    required this.catalogNumber,
-    required this.catalogText,
+    this.catalogNumber,
+    this.catalogText,
     this.sex,
     this.remarks,
     this.printedAt,
@@ -2350,8 +2346,12 @@ class Specimen extends DataClass implements Insertable<Specimen> {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['collection_event_id'] = Variable<int>(collectionEventId);
-    map['catalog_number'] = Variable<int>(catalogNumber);
-    map['catalog_text'] = Variable<String>(catalogText);
+    if (!nullToAbsent || catalogNumber != null) {
+      map['catalog_number'] = Variable<int>(catalogNumber);
+    }
+    if (!nullToAbsent || catalogText != null) {
+      map['catalog_text'] = Variable<String>(catalogText);
+    }
     if (!nullToAbsent || sex != null) {
       map['sex'] = Variable<String>($SpecimensTable.$convertersexn.toSql(sex));
     }
@@ -2378,8 +2378,12 @@ class Specimen extends DataClass implements Insertable<Specimen> {
     return SpecimensCompanion(
       id: Value(id),
       collectionEventId: Value(collectionEventId),
-      catalogNumber: Value(catalogNumber),
-      catalogText: Value(catalogText),
+      catalogNumber: catalogNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(catalogNumber),
+      catalogText: catalogText == null && nullToAbsent
+          ? const Value.absent()
+          : Value(catalogText),
       sex: sex == null && nullToAbsent ? const Value.absent() : Value(sex),
       remarks: remarks == null && nullToAbsent
           ? const Value.absent()
@@ -2408,8 +2412,8 @@ class Specimen extends DataClass implements Insertable<Specimen> {
     return Specimen(
       id: serializer.fromJson<int>(json['id']),
       collectionEventId: serializer.fromJson<int>(json['collectionEventId']),
-      catalogNumber: serializer.fromJson<int>(json['catalogNumber']),
-      catalogText: serializer.fromJson<String>(json['catalogText']),
+      catalogNumber: serializer.fromJson<int?>(json['catalogNumber']),
+      catalogText: serializer.fromJson<String?>(json['catalogText']),
       sex: $SpecimensTable.$convertersexn.fromJson(
         serializer.fromJson<String?>(json['sex']),
       ),
@@ -2427,8 +2431,8 @@ class Specimen extends DataClass implements Insertable<Specimen> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'collectionEventId': serializer.toJson<int>(collectionEventId),
-      'catalogNumber': serializer.toJson<int>(catalogNumber),
-      'catalogText': serializer.toJson<String>(catalogText),
+      'catalogNumber': serializer.toJson<int?>(catalogNumber),
+      'catalogText': serializer.toJson<String?>(catalogText),
       'sex': serializer.toJson<String?>(
         $SpecimensTable.$convertersexn.toJson(sex),
       ),
@@ -2444,8 +2448,8 @@ class Specimen extends DataClass implements Insertable<Specimen> {
   Specimen copyWith({
     int? id,
     int? collectionEventId,
-    int? catalogNumber,
-    String? catalogText,
+    Value<int?> catalogNumber = const Value.absent(),
+    Value<String?> catalogText = const Value.absent(),
     Value<Sex?> sex = const Value.absent(),
     Value<String?> remarks = const Value.absent(),
     Value<DateTime?> printedAt = const Value.absent(),
@@ -2456,8 +2460,10 @@ class Specimen extends DataClass implements Insertable<Specimen> {
   }) => Specimen(
     id: id ?? this.id,
     collectionEventId: collectionEventId ?? this.collectionEventId,
-    catalogNumber: catalogNumber ?? this.catalogNumber,
-    catalogText: catalogText ?? this.catalogText,
+    catalogNumber: catalogNumber.present
+        ? catalogNumber.value
+        : this.catalogNumber,
+    catalogText: catalogText.present ? catalogText.value : this.catalogText,
     sex: sex.present ? sex.value : this.sex,
     remarks: remarks.present ? remarks.value : this.remarks,
     printedAt: printedAt.present ? printedAt.value : this.printedAt,
@@ -2546,8 +2552,8 @@ class Specimen extends DataClass implements Insertable<Specimen> {
 class SpecimensCompanion extends UpdateCompanion<Specimen> {
   final Value<int> id;
   final Value<int> collectionEventId;
-  final Value<int> catalogNumber;
-  final Value<String> catalogText;
+  final Value<int?> catalogNumber;
+  final Value<String?> catalogText;
   final Value<Sex?> sex;
   final Value<String?> remarks;
   final Value<DateTime?> printedAt;
@@ -2571,8 +2577,8 @@ class SpecimensCompanion extends UpdateCompanion<Specimen> {
   SpecimensCompanion.insert({
     this.id = const Value.absent(),
     required int collectionEventId,
-    required int catalogNumber,
-    required String catalogText,
+    this.catalogNumber = const Value.absent(),
+    this.catalogText = const Value.absent(),
     this.sex = const Value.absent(),
     this.remarks = const Value.absent(),
     this.printedAt = const Value.absent(),
@@ -2580,9 +2586,7 @@ class SpecimensCompanion extends UpdateCompanion<Specimen> {
     this.printedPlace = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
-  }) : collectionEventId = Value(collectionEventId),
-       catalogNumber = Value(catalogNumber),
-       catalogText = Value(catalogText);
+  }) : collectionEventId = Value(collectionEventId);
   static Insertable<Specimen> custom({
     Expression<int>? id,
     Expression<int>? collectionEventId,
@@ -2614,8 +2618,8 @@ class SpecimensCompanion extends UpdateCompanion<Specimen> {
   SpecimensCompanion copyWith({
     Value<int>? id,
     Value<int>? collectionEventId,
-    Value<int>? catalogNumber,
-    Value<String>? catalogText,
+    Value<int?>? catalogNumber,
+    Value<String?>? catalogText,
     Value<Sex?>? sex,
     Value<String?>? remarks,
     Value<DateTime?>? printedAt,
@@ -8167,8 +8171,8 @@ typedef $$CollectionEventsTableProcessedTableManager =
 typedef $$SpecimensTableCreateCompanionBuilder = SpecimensCompanion Function({
   Value<int> id,
   required int collectionEventId,
-  required int catalogNumber,
-  required String catalogText,
+  Value<int?> catalogNumber,
+  Value<String?> catalogText,
   Value<Sex?> sex,
   Value<String?> remarks,
   Value<DateTime?> printedAt,
@@ -8180,8 +8184,8 @@ typedef $$SpecimensTableCreateCompanionBuilder = SpecimensCompanion Function({
 typedef $$SpecimensTableUpdateCompanionBuilder = SpecimensCompanion Function({
   Value<int> id,
   Value<int> collectionEventId,
-  Value<int> catalogNumber,
-  Value<String> catalogText,
+  Value<int?> catalogNumber,
+  Value<String?> catalogText,
   Value<Sex?> sex,
   Value<String?> remarks,
   Value<DateTime?> printedAt,
@@ -8555,8 +8559,8 @@ class $$SpecimensTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> collectionEventId = const Value.absent(),
-                Value<int> catalogNumber = const Value.absent(),
-                Value<String> catalogText = const Value.absent(),
+                Value<int?> catalogNumber = const Value.absent(),
+                Value<String?> catalogText = const Value.absent(),
                 Value<Sex?> sex = const Value.absent(),
                 Value<String?> remarks = const Value.absent(),
                 Value<DateTime?> printedAt = const Value.absent(),
@@ -8581,8 +8585,8 @@ class $$SpecimensTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 required int collectionEventId,
-                required int catalogNumber,
-                required String catalogText,
+                Value<int?> catalogNumber = const Value.absent(),
+                Value<String?> catalogText = const Value.absent(),
                 Value<Sex?> sex = const Value.absent(),
                 Value<String?> remarks = const Value.absent(),
                 Value<DateTime?> printedAt = const Value.absent(),

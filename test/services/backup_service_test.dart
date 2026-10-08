@@ -51,6 +51,7 @@ void main() {
         period: CollectionPeriod.singleDay(CalendarDate(2026, 6, 20)),
         recordedAt: DateTime(2026, 6, 20, 10, 30),
         samplingMethod: SamplingMethod.sweeping,
+        confirmNow: true,
         habitat: 'ブナ林',
         count: 3,
       ),
@@ -61,6 +62,7 @@ void main() {
         period: CollectionPeriod(CalendarDate(2026, 6, 19), CalendarDate(2026, 7, 2)),
         recordedAt: DateTime(2026, 7, 2, 18),
         samplingMethod: SamplingMethod.lightTrap,
+        confirmNow: true,
         lightSource: 'UV LED',
       ),
     );
@@ -140,6 +142,7 @@ void main() {
         period: CollectionPeriod.singleDay(CalendarDate(2026, 8, 1)),
         recordedAt: DateTime(2026, 8, 1),
         samplingMethod: SamplingMethod.looking,
+        confirmNow: true,
       ),
     );
     expect(next.catalogRange, 'KYC00127');

@@ -18,6 +18,7 @@ class SpecimenDetail {
     required this.locality,
     required this.history,
     this.labelMismatch = false,
+    this.provisionalIdsInEvent = const [],
   });
 
   final Specimen specimen;
@@ -29,6 +30,10 @@ class SpecimenDetail {
 
   /// 印刷したラベルの標高・地名が、いまの値と食い違っている(再印刷を促す)。
   final bool labelMismatch;
+
+  /// 同じ採集の、番号が未確定(仮)でごみ箱に入っていない標本の ID(この標本を含む)。保存した順。
+  /// 個体数を直す、採集の標本をまとめて確定する、のに使う。
+  final List<int> provisionalIdsInEvent;
 
   Identification? get latest => history.isEmpty ? null : history.first;
 
@@ -110,6 +115,12 @@ class SpecimenService {
               ..where((i) => i.specimenId.equals(specimenId))
               ..orderBy([(i) => OrderingTerm.desc(i.id)]))
             .get();
+    final eventId = row.readTable(_db.specimens).collectionEventId;
+    final provisional =
+        await (_db.select(_db.specimens)
+              ..where((s) => s.collectionEventId.equals(eventId) & s.catalogNumber.isNull() & s.deletedAt.isNull())
+              ..orderBy([(s) => OrderingTerm.asc(s.id)]))
+            .get();
     return SpecimenDetail(
       specimen: row.readTable(_db.specimens),
       event: row.readTable(_db.collectionEvents),
@@ -120,6 +131,7 @@ class SpecimenService {
         row.readTable(_db.localities),
         (await _db.select(_db.appSettings).getSingle()).elevationRounding,
       ),
+      provisionalIdsInEvent: [for (final s in provisional) s.id],
     );
   }
 

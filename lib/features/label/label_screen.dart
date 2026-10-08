@@ -14,6 +14,7 @@ import '../../domain/label/data_label_layout.dart';
 import '../../domain/label/identification_label.dart';
 import '../../domain/label/date_range_format.dart';
 import '../../domain/label/label_sheet.dart';
+import '../../domain/specimen_list.dart' show provisionalLabel;
 import '../../services/label_service.dart';
 import '../../services/printed_label_values.dart';
 import '../../services/service_providers.dart';
@@ -213,12 +214,17 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
 
   Widget _groupTile(List<LabelCandidate> group) {
     final first = group.first;
-    final last = group.last;
     final ids = group.map((c) => c.specimen.id).toSet();
     final selectedCount = ids.where((id) => !_excluded.contains(id)).length;
-    final numbers = group.length == 1
-        ? first.specimen.catalogText
-        : '${first.specimen.catalogText}〜${last.specimen.catalogNumber}';
+    final confirmed = group.where((c) => c.specimen.catalogNumber != null).toList();
+    final provisionalCount = group.length - confirmed.length;
+    final numbers = [
+      if (confirmed.length == 1)
+        confirmed.first.specimen.catalogText!
+      else if (confirmed.isNotEmpty)
+        '${confirmed.first.specimen.catalogText}〜${confirmed.last.specimen.catalogNumber}',
+      if (provisionalCount > 0) confirmed.isEmpty ? provisionalLabel : '$provisionalLabel $provisionalCount件',
+    ].join(' + ');
     final place = [first.locality.municipalityJa, first.locality.localityJa].nonNulls.join();
     final period = formatLabelPeriod(first.toSource(ElevationRounding.tenMeters).period);
 
@@ -263,7 +269,27 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
     }
   }
 
-  Future<void> _createInner(List<LabelCandidate> targets) async {
+  Future<void> _createInner(List<LabelCandidate> selected) async {
+    var targets = selected;
+
+    // 0. 番号が未確定(仮)の標本があれば、確定してから出力するか案内する(要件定義 第14章)。
+    // コレクションラベルに標本番号が要るので、同定ラベルだけのときは聞かない
+    final unnumbered = _unit.hasCollection ? targets.where((c) => c.specimen.catalogNumber == null).toList() : <LabelCandidate>[];
+    if (unnumbered.isNotEmpty) {
+      final choice = await _ask(
+        '番号が未確定の標本が${unnumbered.length}件あります',
+        'コレクションラベルには標本番号が要ります。番号を確定してから出力します。確定した番号は戻せません。\n'
+            '個体数などを直す場合は、やめて、標本の編集から直してください。',
+        ['番号を確定して出力'],
+      );
+      if (choice == null) return;
+      await ref.read(catalogNumberServiceProvider).confirm([for (final c in unnumbered) c.specimen.id]);
+      // 確定した番号で、対象を読み直す
+      final ids = {for (final c in targets) c.specimen.id};
+      targets = [for (final c in await ref.read(labelServiceProvider).loadCandidates()) if (ids.contains(c.specimen.id)) c];
+      if (!mounted) return;
+    }
+
     // 1. 補完待ちのまま印刷するか(要件定義 第13章)。標高・地名はデータラベルのことなので、同定ラベルだけなら聞かない
     final pending = _unit.hasData ? targets.where((c) => c.pendingEnrichment).length : 0;
     if (pending > 0) {
@@ -313,7 +339,7 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
         '日本語の地名を省くラベルが${omitted.length}件あります',
         '${omitted.any((c) => layouts[c.specimen.id]!.japaneseOmittedForDate) ? '日付と採集者が1行に収まらない、または' : ''}'
             '文字を小さくしても収まらないため、日本語の地名を省きます。\n'
-            '${omitted.take(10).map((c) => c.specimen.catalogText).join('、')}'
+            '${omitted.take(10).map((c) => c.specimen.catalogText ?? provisionalLabel).join('、')}'
             '${omitted.length > 10 ? ' ほか' : ''}',
         ['省いて印刷', '省かない(はみ出す)'],
       );
@@ -337,7 +363,7 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
         for (final c in targets)
           SpecimenLabels(
             specimenId: c.specimen.id,
-            catalogText: c.specimen.catalogText,
+            catalogText: c.specimen.catalogText ?? provisionalLabel,
             dataLabel: layouts[c.specimen.id]!,
             identificationLabel: identificationLayouts[c.specimen.id],
           ),
@@ -349,9 +375,9 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
     final overflowing = [
       if (_unit.hasData)
         for (final c in targets)
-          if (layouts[c.specimen.id]!.overflows) c.specimen.catalogText,
+          if (layouts[c.specimen.id]!.overflows) c.specimen.catalogText ?? provisionalLabel,
       for (final c in targets)
-        if (identificationLayouts[c.specimen.id]?.overflows ?? false) '${c.specimen.catalogText}(同定)',
+        if (identificationLayouts[c.specimen.id]?.overflows ?? false) '${c.specimen.catalogText ?? provisionalLabel}(同定)',
     ];
     if (!mounted) return;
     await Navigator.of(context).push(
