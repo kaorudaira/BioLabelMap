@@ -74,18 +74,20 @@ class DictionaryService {
   }
 
   /// 和名・属・種・亜種のどれかに [query] を含む種名を、よく使う順に返す。
+  /// [limit] が null なら、合うものを全て返す。
   /// 空白で区切った語は、すべてを含むものだけ。大文字小文字は区別しない。
-  Future<List<SpeciesName>> suggestSpecies(String query, {int limit = 5}) async {
+  Future<List<SpeciesName>> suggestSpecies(String query, {int? limit = 5}) async {
     final words = _words(query);
     if (words.isEmpty) return const [];
     final rows =
         await (_db.select(_db.speciesDict)
               ..orderBy([(s) => OrderingTerm.desc(s.useCount), (s) => OrderingTerm.desc(s.updatedAt)]))
             .get();
-    return [
+    final found = [
       for (final r in rows)
         if (_matchesAll(words, [r.vernacular, r.genus, r.species, r.subspecies])) speciesNameOfEntry(r),
-    ].take(limit).toList();
+    ];
+    return limit == null ? found : found.take(limit).toList();
   }
 
   /// [query] を含む環境・寄主植物を、よく使う順に返す。完全に同じものは除く。

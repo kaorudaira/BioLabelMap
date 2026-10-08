@@ -56,3 +56,21 @@ class SpeciesName {
   @override
   int get hashCode => key.hashCode;
 }
+
+/// 和名の50音順に並べる比較(候補の一覧用)。ひらがなはカタカナとして比べる。
+/// 和名の無い種は最後に回し、同じ和名(または和名なし)どうしは学名の順にする。
+int compareByVernacular(SpeciesName a, SpeciesName b) {
+  final x = a.vernacular, y = b.vernacular;
+  if (x == null || y == null) {
+    if (x != null) return -1;
+    if (y != null) return 1;
+  } else {
+    final c = _kanaKey(x).compareTo(_kanaKey(y));
+    if (c != 0) return c;
+  }
+  return (a.scientific ?? '').toLowerCase().compareTo((b.scientific ?? '').toLowerCase());
+}
+
+String _kanaKey(String s) => String.fromCharCodes([
+  for (final c in s.runes) c >= 0x3041 && c <= 0x3096 ? c + 0x60 : c,
+]);

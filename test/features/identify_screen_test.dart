@@ -35,6 +35,10 @@ void main() {
   }
 
   Future<void> pumpScreen(WidgetTester tester, {int count = 1, SpeciesName? initial, String? lastIdentifier, SpeciesCatalog? catalog}) async {
+    // 画面の下の方の項目も描画されるよう、縦長の画面にする
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     final row = await real(tester, () async {
       await SettingsService(db).initializeCatalog(0);
       final r = await RecordService(db).save(
@@ -105,7 +109,7 @@ void main() {
     expect(tester.widget<TextField>(field('命名者・年')).controller!.text, 'Chaudoir, 1869');
     await settle(tester);
     // 候補を入れたあとは、候補の一覧を閉じる
-    expect(find.text('候補(選ぶとまとめて入ります)'), findsNothing);
+    expect(find.textContaining('候補 '), findsNothing);
   });
 
   testWidgets('種名を入れて保存すると仮同定で履歴に加わり、同定者を覚える', (tester) async {
@@ -270,6 +274,92 @@ void main() {
       await settle(tester);
       expect(find.text('目録'), findsNWidgets(2));
       expect(find.textContaining('Another'), findsNothing);
+    });
+
+    testWidgets('自動入力した欄を、少しずつ消していって全部消し切っても、入れ直さない', (tester) async {
+      await pumpScreen(tester, catalog: catalog);
+      await tester.enterText(field('和名(任意)'), 'クボタヒメハネカクシ');
+      await tester.pump();
+      expect(text(tester, '属'), 'Atheta');
+
+      // 和名を1文字ずつ消す。途中も、消し切ったときも、勝手に入り直さない
+      var v = 'クボタヒメハネカクシ';
+      while (v.isNotEmpty) {
+        v = v.substring(0, v.length - 1);
+        await tester.enterText(field('和名(任意)'), v);
+        await tester.pump();
+      }
+      expect(text(tester, '和名(任意)'), '');
+
+      // 命名者・年も、全部消せる
+      await tester.enterText(field('命名者・年'), '');
+      await tester.pump();
+      expect(text(tester, '命名者・年'), '');
+    });
+
+    testWidgets('クリアで種名の入力をすべて消し、そのあと同じ種を打てば、また自動入力される', (tester) async {
+      await pumpScreen(tester, catalog: catalog);
+      await tester.enterText(field('和名(任意)'), 'クボタヒメハネカクシ');
+      await tester.pump();
+      expect(find.textContaining('目録から入力しました'), findsOneWidget);
+
+      await tester.tap(find.text('クリア'));
+      await tester.pump();
+      for (final label in ['和名(任意)', '属', '種', '亜種', '命名者・年']) {
+        expect(text(tester, label), '', reason: label);
+      }
+      expect(find.textContaining('目録から入力しました'), findsNothing);
+      expect(find.text('仮同定'), findsNothing);
+
+      await tester.enterText(field('和名(任意)'), 'クボタヒメハネカクシ');
+      await tester.pump();
+      expect(text(tester, '属'), 'Atheta');
+    });
+
+    testWidgets('何も入力していないとき、クリアは押せない。同定者と同定日は消さない', (tester) async {
+      await pumpScreen(tester, catalog: catalog, lastIdentifier: 'K. Yoshihara');
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'クリア')).onPressed, isNull);
+      await tester.enterText(field('種'), 'x');
+      await tester.pump();
+      await tester.tap(find.text('クリア'));
+      await tester.pump();
+      expect(text(tester, '同定者'), 'K. Yoshihara');
+    });
+
+    testWidgets('候補は全件を出し、5件ぶんの高さでスクロールする', (tester) async {
+      final many = SpeciesCatalog.parseCsv(
+        [for (var i = 0; i < 12; i++) '"種${String.fromCharCode(0x30A2 + i * 2)}","Carabus species${String.fromCharCode(97 + i)} Bates, 1888"'].join('\n'),
+      );
+      await pumpScreen(tester, catalog: many);
+      await tester.enterText(field('属'), 'carabus');
+      await settle(tester);
+
+      expect(find.text('候補 13件(選ぶとまとめて入ります)'), findsOneWidget);
+      expect(find.text('目録'), findsNWidgets(4)); // 辞書の1件+目録の4件
+      expect(find.text('目録'), findsNWidgets(4)); // 辞書の1件+目録の4件
+      expect(find.textContaining('speciesl'), findsNothing);
+      await tester.drag(find.byType(ListView).last, const Offset(0, -1000));
+      await tester.pump();
+      expect(find.textContaining('speciesl'), findsOneWidget);
+    });
+
+    testWidgets('候補は最大20件で、和名の50音順に並べる。多いときは、絞り込めると案内する', (tester) async {
+      final many = SpeciesCatalog.parseCsv(
+        [
+          // 並びが入力順に依らないよう、和名を逆順に入れる
+          for (var i = 29; i >= 0; i--)
+            '"${String.fromCharCode(0x30A2 + i)}","Carabus species${String.fromCharCode(97 + i % 26)}${String.fromCharCode(97 + i ~/ 26)} Bates, 1888"',
+        ].join('\n'),
+      );
+      await pumpScreen(tester, catalog: many);
+      await tester.enterText(field('属'), 'carabus');
+      await settle(tester);
+
+      expect(find.text('候補 31件のうち、和名の50音順で 20件(さらに入力すると絞り込めます)'), findsOneWidget);
+      // 先頭は ア。辞書の「オサムシ」も、和名の順(オの位置)に入る
+      final titles = tester.widgetList<ListTile>(find.byType(ListTile)).map((t) => (t.title! as Text).data!).toList();
+      expect(titles.first, startsWith('ア '));
+      expect(titles.map((t) => t.split(' ').first).toList(), [...titles.map((t) => t.split(' ').first)]..sort());
     });
 
     testWidgets('自分が使った種(辞書)を先に出し、同じ種は目録と重ねて出さない', (tester) async {

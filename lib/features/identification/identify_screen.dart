@@ -55,6 +55,9 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
 
   /// 種名の欄に打った文字から引いた、辞書の候補。
   var _candidates = const <_Candidate>[];
+
+  /// 合った候補の総数。多いときは、和名の50音順で先頭の [_maxCandidates] 件だけ出す。
+  var _matched = 0;
   var _generation = 0;
 
   var _date = CalendarDate.fromDateTime(DateTime.now());
@@ -65,9 +68,14 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
   var _picking = false;
   var _autofilling = false;
 
-  /// 目録から自動入力した種。同じ種に一致し続けている間は、消した欄を入れ直さない。
-  CatalogEntry? _autoFilled;
+  /// 目録から自動入力した(または候補から選んだ)種。一度入れた種は、消された欄を入れ直さない。
+  final _autoFilled = <CatalogEntry>{};
   String? _autoFillNote;
+
+  /// 候補の一覧に同時に見せる件数と、1件の高さ。
+  static const _visibleCandidates = 5;
+  static const _maxCandidates = 20;
+  static const _candidateRowHeight = 64.0;
 
   static const _nameFields = [_Field.vernacular, _Field.genus, _Field.species, _Field.subspecies];
 
@@ -119,18 +127,22 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
 
   Future<void> _refreshCandidates(String query) async {
     final generation = ++_generation;
-    final fromDictionary = await ref.read(dictionaryServiceProvider).suggestSpecies(query);
+    final fromDictionary = await ref.read(dictionaryServiceProvider).suggestSpecies(query, limit: null);
     if (!mounted || generation != _generation) return;
     // 自分で使った種(辞書)を先に、目録の種をその後ろに並べる。同じ種名は1つにまとめる
     final catalog = ref.read(speciesCatalogProvider).value ?? SpeciesCatalog.empty;
     final found = <String, _Candidate>{
       for (final n in fromDictionary) n.key: _Candidate(n, fromCatalog: false),
     };
-    for (final e in catalog.search(query)) {
+    for (final e in catalog.search(query, limit: null)) {
       final n = e.toSpeciesName();
       found.putIfAbsent(n.key, () => _Candidate(n, fromCatalog: true));
     }
-    setState(() => _candidates = found.values.toList());
+    final sorted = found.values.toList()..sort((a, b) => compareByVernacular(a.name, b.name));
+    setState(() {
+      _matched = sorted.length;
+      _candidates = sorted.take(_maxCandidates).toList();
+    });
   }
 
   /// 入力した和名・学名が目録の1つの種に一致したら、空の欄を目録から埋める。
@@ -140,12 +152,11 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
     if (catalog == null) return;
     final match = catalog.uniqueMatch(_name);
     if (match == null) {
-      _autoFilled = null;
       _autoFillNote = null;
       return;
     }
-    if (identical(match, _autoFilled)) return;
-    _autoFilled = match;
+    // 一度入れた種は、消されても入れ直さない(部分的に消している途中や、全部消したあとも)
+    if (!_autoFilled.add(match)) return;
 
     final filled = <String>[];
     void fill(TextEditingController c, String? value, String label) {
@@ -165,6 +176,23 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
     _autoFillNote = filled.isEmpty ? null : '目録から入力しました: ${filled.join('・')}';
   }
 
+  /// 種名の入力をすべて消して、最初からやり直す。自動入力の記憶も消す。
+  void _clearName() {
+    _picking = true;
+    _generation++;
+    for (final c in [_vernacular, _genus, _species, _subspecies, _authorship]) {
+      c.clear();
+    }
+    _picking = false;
+    _autoFilled.clear();
+    setState(() {
+      _autoFillNote = null;
+      _confirmed = false;
+      _candidates = const [];
+      _matched = 0;
+    });
+  }
+
   /// 候補を選ぶと、和名・学名・命名者・年がまとめて入る。
   void _pick(SpeciesName c) {
     _picking = true;
@@ -176,7 +204,8 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
     _authorship.text = c.authorship ?? '';
     _picking = false;
     // 選んだ種が目録の種と一致するなら、消した欄を勝手に入れ直さない
-    _autoFilled = ref.read(speciesCatalogProvider).value?.uniqueMatch(_name);
+    final match = ref.read(speciesCatalogProvider).value?.uniqueMatch(_name);
+    if (match != null) _autoFilled.add(match);
     _autoFillNote = null;
     setState(() => _candidates = const []);
     FocusScope.of(context).unfocus();
@@ -224,6 +253,11 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
           FormBlock(
             color: BlockColors.identification,
             title: '種名',
+            trailing: TextButton.icon(
+              onPressed: _name.isEmpty ? null : _clearName,
+              icon: const Icon(Icons.clear_all),
+              label: const Text('クリア'),
+            ),
             children: [
               _field(_Field.vernacular, '和名(任意)', hint: '例: オサムシ'),
               const SizedBox(height: 8),
@@ -306,26 +340,42 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
     decoration: InputDecoration(labelText: label, hintText: hint, border: const OutlineInputBorder(), isDense: true),
   );
 
-  Widget _candidateList() => Card(
-    margin: const EdgeInsets.only(top: 6),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
-          child: Text('候補(選ぶとまとめて入ります)', style: TextStyle(fontSize: 12)),
-        ),
-        for (final c in _candidates)
-          ListTile(
-            dense: true,
-            title: Text(c.name.label),
-            subtitle: c.name.authorship == null ? null : Text(c.name.authorship!),
-            trailing: c.fromCatalog ? const Text('目録', style: TextStyle(fontSize: 12)) : null,
-            onTap: () => _pick(c.name),
+  /// 候補の一覧。和名の50音順に最大20件を出し、5件ぶんの高さでスクロールする。
+  Widget _candidateList() {
+    final shown = _candidates.length < _visibleCandidates ? _candidates.length : _visibleCandidates;
+    return Card(
+      margin: const EdgeInsets.only(top: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: Text(
+              _matched > _candidates.length
+                  ? '候補 $_matched件のうち、和名の50音順で ${_candidates.length}件(さらに入力すると絞り込めます)'
+                  : '候補 ${_candidates.length}件(選ぶとまとめて入ります)', style: const TextStyle(fontSize: 12)),
           ),
-      ],
-    ),
-  );
+          SizedBox(
+            height: shown * _candidateRowHeight,
+            child: ListView.builder(
+              itemExtent: _candidateRowHeight,
+              itemCount: _candidates.length,
+              itemBuilder: (context, i) {
+                final c = _candidates[i];
+                return ListTile(
+                  dense: true,
+                  title: Text(c.name.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: c.name.authorship == null ? null : Text(c.name.authorship!, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  trailing: c.fromCatalog ? const Text('目録', style: TextStyle(fontSize: 12)) : null,
+                  onTap: () => _pick(c.name),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// 種名の候補。辞書(自分が使った種)か、甲虫の目録から。
