@@ -32,7 +32,7 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
     final items = [...(trashed.value ?? const <SpecimenListItem>[])]
       ..sort((a, b) {
         final c = b.deletedAt!.compareTo(a.deletedAt!);
-        return c != 0 ? c : b.catalogNumber.compareTo(a.catalogNumber);
+        return c != 0 ? c : b.id.compareTo(a.id);
       });
     final now = widget.now ?? DateTime.now();
     _selected.removeWhere((id) => !items.any((i) => i.id == id));
@@ -137,7 +137,7 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
                     ),
                   ),
                   Text(
-                    '${i.catalogText}  ${formatPeriodText(i.period)}',
+                    '${i.catalogDisplay}  ${formatPeriodText(i.period)}',
                     style: theme.textTheme.bodyMedium?.copyWith(color: BlockColors.specimen),
                   ),
                   Text(

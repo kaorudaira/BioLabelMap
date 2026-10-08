@@ -110,6 +110,7 @@ void main() {
         recordedAt: DateTime(2026, 6, 20),
         samplingMethod: SamplingMethod.sweeping,
         count: 3,
+        confirmNow: true,
       ));
     });
 
@@ -136,7 +137,7 @@ void main() {
             for (final c in candidates)
               SpecimenLabels(
                 specimenId: c.specimen.id,
-                catalogText: c.specimen.catalogText,
+                catalogText: c.specimen.catalogText!,
                 dataLabel: layoutDataLabel(
                   buildDataLabel(c.toSource(ElevationRounding.tenMeters)),
                   measurer: fonts.measurer,
@@ -198,7 +199,7 @@ void main() {
         for (final c in candidates)
           SpecimenLabels(
             specimenId: c.specimen.id,
-            catalogText: c.specimen.catalogText,
+            catalogText: c.specimen.catalogText!,
             dataLabel: layoutDataLabel(buildDataLabel(c.toSource(ElevationRounding.tenMeters)), measurer: fonts.measurer),
             identificationLabel: switch (c.identificationSource) {
               final s? => layoutIdentificationLabel(s, measurer: fonts.measurer),
@@ -314,6 +315,7 @@ void main() {
       period: CollectionPeriod.singleDay(CalendarDate(2026, 6, 20)),
       recordedAt: DateTime(2026, 6, 20),
       samplingMethod: SamplingMethod.sweeping,
+      confirmNow: true,
     ));
 
     setUp(() async {
@@ -329,7 +331,7 @@ void main() {
     tearDown(() => db.close());
 
     Future<Map<String, LabelCandidate>> candidates() async => {
-      for (final c in await labels.watchCandidates().first) c.specimen.catalogText: c,
+      for (final c in await labels.watchCandidates().first) c.specimen.catalogText!: c,
     };
 
     test('大字があってローマ字が空の地点だけを、未入力として扱う', () async {

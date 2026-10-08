@@ -61,6 +61,11 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
     for (final f in PlaceField.values) f: TextEditingController(text: _initialPlace(f)),
   };
 
+  // 番号が未確定(仮)の標本は、番号を使っていないので、個体数を増減できる
+  bool get _canChangeCount => _single && _initial!.specimen.catalogNumber == null && _initial!.specimen.deletedAt == null;
+  late final int _count0 = _initial?.provisionalIdsInEvent.length ?? 0;
+  late int _provCount = _count0;
+
   var _saving = false;
 
   /// 地図で選び直した座標。1件の編集だけ。
@@ -135,14 +140,20 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
 
   Future<void> _save() async {
     final edit = _buildEdit();
-    if (edit.isEmpty) {
+    final countChanged = _canChangeCount && _provCount != _count0;
+    if (edit.isEmpty && !countChanged) {
       Navigator.pop(context, false);
       return;
     }
     if (!await _confirmOneLanguage(edit)) return;
     setState(() => _saving = true);
     try {
-      await ref.read(specimenEditServiceProvider).apply(widget.args.specimenIds, edit);
+      final service = ref.read(specimenEditServiceProvider);
+      // 個体数を先に直す(採集を複製する修正の前に、元の採集で数える)
+      if (countChanged) {
+        await service.setProvisionalCount(_initial!.event.id, _provCount, keepSpecimenId: _initial!.specimen.id);
+      }
+      if (!edit.isEmpty) await service.apply(widget.args.specimenIds, edit);
       // 座標を直したら、新しい座標の標高と地名を取り直す(通信できなければ、あとで自動で補完する)
       if (edit.position != null) unawaited(ref.read(enrichmentSchedulerProvider).trigger());
       if (!mounted) return;
@@ -201,7 +212,7 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_single ? '編集 ${_initial!.specimen.catalogText}' : '一括編集($_count件)')),
+      appBar: AppBar(title: Text(_single ? '編集 ${_initial!.specimen.catalogText ?? provisionalLabel}' : '一括編集($_count件)')),
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
@@ -213,6 +224,7 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
           if (_single) _dateBlock(),
           _methodBlock(),
           if (_single) _habitatBlock(),
+          if (_canChangeCount) _countBlock(),
           if (_single) _specimenBlock(),
           if (_single) _positionBlock(),
           _placeBlock(),
@@ -309,6 +321,32 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
     color: BlockColors.collecting,
     title: '環境・寄主植物',
     children: [_field(_habitat, '環境'), const SizedBox(height: 8), _field(_hostPlant, '寄主植物')],
+  );
+
+  Widget _countBlock() => FormBlock(
+    color: BlockColors.specimen,
+    title: '個体数(番号が未確定の標本)',
+    children: [
+      Row(
+        children: [
+          const Text('この採集の標本'),
+          const Spacer(),
+          IconButton.outlined(
+            onPressed: _provCount > 1 ? () => setState(() => _provCount--) : null,
+            icon: const Icon(Icons.remove),
+          ),
+          SizedBox(
+            width: 56,
+            child: Text('$_provCount', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall),
+          ),
+          IconButton.outlined(onPressed: () => setState(() => _provCount++), icon: const Icon(Icons.add)),
+        ],
+      ),
+      Text(
+        '番号を確定する前なら、個体数を直せます。減らすときは、保存した順の新しい標本から削除します(同定を入力した標本は減らせません)。',
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+    ],
   );
 
   Widget _specimenBlock() => FormBlock(

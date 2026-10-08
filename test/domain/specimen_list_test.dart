@@ -18,10 +18,11 @@ SpecimenListItem item(
   String placeEn = 'Shimooritate Uonuma-shi Niigata-ken',
   bool printed = false,
   String prefix = 'KYC',
+  bool provisional = false,
 }) => SpecimenListItem(
   id: number,
-  catalogNumber: number,
-  catalogText: '$prefix${number.toString().padLeft(5, '0')}',
+  catalogNumber: provisional ? null : number,
+  catalogText: provisional ? null : '$prefix${number.toString().padLeft(5, '0')}',
   localityId: localityId,
   period: period ?? CollectionPeriod.singleDay(CalendarDate(2026, 6, 20)),
   method: method,
@@ -34,6 +35,7 @@ SpecimenListItem item(
 );
 
 void main() {
+  _provisionalTests();
   _formatTests();
   _spanTests();
   final carabus = SpeciesName(vernacular: 'オサムシ', genus: 'Carabus', species: 'insulicola');
@@ -225,6 +227,44 @@ void _formatTests() {
       expect(formatLatLon(-33.8688, 151.2093, digits: 4), '33.8688°S 151.2093°E');
       expect(formatLatLon(40.7128, -74.006, digits: 3), '40.713°N 74.006°W');
       expect(formatLatLon(0, 0, digits: 1), '0.0°N 0.0°E');
+    });
+  });
+}
+
+void _provisionalTests() {
+  group('番号が未確定(仮)の標本', () {
+    test('番号の表示は「番号未確定」。確定済みの後ろに、保存した順(ID)で並ぶ', () {
+      final group = SpecimenGroup([item(9, provisional: true), item(5), item(7, provisional: true), item(6)]);
+      expect(group.items.map((i) => i.id), [5, 6, 7, 9]);
+      expect(group.items.map((i) => i.catalogDisplay), ['KYC00005', 'KYC00006', '番号未確定', '番号未確定']);
+      expect(group.provisionalCount, 2);
+    });
+
+    test('行の番号の表示:全部が仮なら「番号未確定」、混ざっていれば、確定済みの範囲に件数を添える', () {
+      expect(SpecimenGroup([item(1, provisional: true), item(2, provisional: true)]).catalogRuns, '番号未確定');
+      expect(SpecimenGroup([item(1, provisional: true)]).catalogRuns, '番号未確定');
+      expect(
+        SpecimenGroup([item(5), item(6), item(7, provisional: true), item(8, provisional: true)]).catalogRuns,
+        'KYC00005〜6, 番号未確定 2件',
+      );
+      expect(SpecimenGroup([item(5), item(7, provisional: true)]).catalogRuns, 'KYC00005, 番号未確定 1件');
+    });
+
+    test('番号順の並びでは、確定済みの行の後ろに、仮の行が保存した順に並ぶ', () {
+      final items = [
+        item(3, provisional: true, species: SpeciesName(genus: 'A', species: 'a')),
+        item(1),
+        item(2, provisional: true, species: SpeciesName(genus: 'B', species: 'b')),
+      ];
+      final groups = arrangeSpecimens(items, sort: SpecimenSort.catalog);
+      expect(groups.map((g) => g.first.id), [1, 2, 3]);
+    });
+
+    test('検索で「番号未確定」と入れると、仮の標本が見つかる。標本番号でも、確定済みが見つかる', () {
+      final items = [item(1), item(2, provisional: true)];
+      List<int> ids(String q) => arrangeSpecimens(items, filter: SpecimenFilter(query: q)).expand((g) => g.items).map((i) => i.id).toList();
+      expect(ids('番号未確定'), [2]);
+      expect(ids('00001'), [1]);
     });
   });
 }

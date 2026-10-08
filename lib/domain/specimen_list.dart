@@ -24,8 +24,17 @@ class SpecimenListItem {
   });
 
   final int id;
-  final int catalogNumber;
-  final String catalogText;
+  /// 標本番号。null は番号未確定(仮)で、確定の操作で付ける(要件定義 第14章)。
+  final int? catalogNumber;
+  final String? catalogText;
+
+  bool get provisional => catalogNumber == null;
+
+  /// 画面に出す標本番号。仮は「番号未確定」。
+  String get catalogDisplay => catalogText ?? provisionalLabel;
+
+  /// 保存した順に並べるための値。確定済みは番号の順、仮は確定済みの後ろで、保存した順(ID)。
+  (int, int) get orderKey => (catalogNumber == null ? 1 : 0, catalogNumber ?? id);
   final int localityId;
   final CollectionPeriod period;
   final SamplingMethod method;
@@ -49,13 +58,21 @@ class SpecimenListItem {
   final bool labelMismatch;
 }
 
+/// 番号が未確定(仮)の標本の表示(要件定義 第14章)。
+const provisionalLabel = '番号未確定';
+
+int _byOrderKey(SpecimenListItem a, SpecimenListItem b) {
+  final x = a.orderKey, y = b.orderKey;
+  return x.$1 != y.$1 ? x.$1.compareTo(y.$1) : x.$2.compareTo(y.$2);
+}
+
 /// 種・採集日・場所・採集方法が同じ標本を1行にまとめたもの。
 class SpecimenGroup {
   SpecimenGroup(List<SpecimenListItem> items)
     : assert(items.isNotEmpty),
-      items = List.unmodifiable([...items]..sort((a, b) => a.catalogNumber.compareTo(b.catalogNumber)));
+      items = List.unmodifiable(<SpecimenListItem>[...items]..sort(_byOrderKey));
 
-  /// 標本番号順。
+  /// 標本番号順。番号が未確定(仮)の標本は、確定済みの後ろに、保存した順に並べる。
   final List<SpecimenListItem> items;
 
   SpecimenListItem get first => items.first;
@@ -64,25 +81,31 @@ class SpecimenGroup {
   /// 標本番号を、連続する範囲ごとにまとめた表示。例: `KYC00120〜122, KYC00125`。
   /// 番号は標本ごとに作成時の書式で保存してあるので、その文字列から作る
   /// (接頭辞を後で変えても、既存の標本は元の番号で表示する)。
+  /// 番号が未確定の標本は、最後に「番号未確定 N件」と添える。
   String get catalogRuns {
     final runs = <List<SpecimenListItem>>[];
-    for (final item in items) {
-      if (runs.isNotEmpty && runs.last.last.catalogNumber + 1 == item.catalogNumber) {
+    for (final item in items.where((i) => !i.provisional)) {
+      if (runs.isNotEmpty && runs.last.last.catalogNumber! + 1 == item.catalogNumber) {
         runs.last.add(item);
       } else {
         runs.add([item]);
       }
     }
-    return runs.map((run) {
+    final parts = runs.map((run) {
       final first = run.first;
       final last = run.last;
-      if (identical(first, last)) return first.catalogText;
+      if (identical(first, last)) return first.catalogText!;
       // 同じ接頭辞なら、終わりは数字だけにして短くする(`KYC00120〜122`)
       String prefixOf(String text) => text.replaceFirst(RegExp(r'\d+$'), '');
-      final samePrefix = prefixOf(first.catalogText) == prefixOf(last.catalogText);
+      final samePrefix = prefixOf(first.catalogText!) == prefixOf(last.catalogText!);
       return '${first.catalogText}〜${samePrefix ? '${last.catalogNumber}' : last.catalogText}';
-    }).join(', ');
+    }).toList()
+      ..addAll([if (provisionalCount > 0) provisionalCount == count ? provisionalLabel : '$provisionalLabel $provisionalCount件']);
+    return parts.join(', ');
   }
+
+  /// 番号が未確定(仮)の標本の数。
+  int get provisionalCount => items.where((i) => i.provisional).length;
 
   /// 1件でも未印刷があれば、その行に未印刷のマークを付ける。
   bool get hasUnprinted => items.any((i) => !i.printed);
@@ -203,6 +226,7 @@ class SpecimenFilter {
       item.placeJa,
       item.placeEn,
       item.catalogText,
+      if (item.provisional) provisionalLabel,
     ].whereType<String>().join(' ').toLowerCase();
     return words.every((w) => haystack.contains(w.toLowerCase()));
   }
@@ -220,7 +244,7 @@ List<SpecimenGroup> arrangeSpecimens(
   SpecimenSort sort = SpecimenSort.dateDesc,
 }) {
   final groups = groupSpecimens(items.where(filter.matches));
-  int byCatalog(SpecimenGroup a, SpecimenGroup b) => a.first.catalogNumber.compareTo(b.first.catalogNumber);
+  int byCatalog(SpecimenGroup a, SpecimenGroup b) => _byOrderKey(a.first, b.first);
   int byDateDesc(SpecimenGroup a, SpecimenGroup b) {
     final c = b.first.period.end.compareTo(a.first.period.end);
     return c != 0 ? c : b.first.period.start.compareTo(a.first.period.start);

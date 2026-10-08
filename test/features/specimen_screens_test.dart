@@ -239,6 +239,7 @@ void main() {
             period: CollectionPeriod(CalendarDate(2026, 6, 19), CalendarDate(2026, 6, 20)),
             recordedAt: DateTime(2026, 6, 20, 10, 30),
             samplingMethod: SamplingMethod.sweeping,
+            confirmNow: true,
             habitat: 'ブナ林',
             remarks: '朝霧',
             sex: Sex.female,

@@ -51,6 +51,7 @@ void main() {
           period: CollectionPeriod.singleDay(CalendarDate(2026, 6, 20)),
           recordedAt: DateTime(2026, 6, 20),
           samplingMethod: method,
+          confirmNow: true,
           habitat: 'ブナ林',
           count: count,
         ),

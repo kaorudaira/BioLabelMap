@@ -47,8 +47,8 @@ void main() {
       db.into(db.specimens).insert(
         SpecimensCompanion.insert(
           collectionEventId: eventId,
-          catalogNumber: number,
-          catalogText: 'KYC${number.toString().padLeft(5, '0')}',
+          catalogNumber: Value(number),
+          catalogText: Value('KYC${number.toString().padLeft(5, '0')}'),
         ),
       );
 

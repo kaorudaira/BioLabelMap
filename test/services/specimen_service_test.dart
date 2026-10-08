@@ -54,6 +54,7 @@ void main() {
       period: CollectionPeriod.singleDay(CalendarDate(2026, 6, 20)),
       recordedAt: DateTime(2026, 6, 20, 10, 30),
       samplingMethod: method,
+      confirmNow: true,
       samplingMethodOther: other,
       count: count,
     ),

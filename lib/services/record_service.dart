@@ -1,13 +1,13 @@
 import 'package:drift/drift.dart';
 
 import '../core/db/database.dart';
-import '../domain/catalog_number.dart';
 import '../domain/dictionary.dart';
 import '../domain/locality_key.dart';
 import '../domain/models/collection_period.dart';
 import '../domain/models/place_info.dart';
 import '../domain/sampling_method.dart';
 import '../domain/status.dart';
+import 'catalog_number_service.dart';
 import 'dictionary_service.dart';
 import 'locality_lookup_service.dart';
 import 'settings_service.dart';
@@ -61,6 +61,7 @@ class RecordInput {
     this.sex,
     this.remarks,
     this.draftId,
+    this.confirmNow = false,
   });
 
   final RecordPosition position;
@@ -80,6 +81,9 @@ class RecordInput {
 
   /// 下書きから保存するときの下書き ID。保存できたら下書きを消す。
   final int? draftId;
+
+  /// 保存と同時に番号を確定する。ふつうは false(仮の標本として保存し、個体数などを直してから確定する)。
+  final bool confirmNow;
 }
 
 /// 保存の結果。
@@ -88,15 +92,15 @@ class RecordResult {
     required this.localityId,
     required this.collectionEventId,
     required this.specimenIds,
-    required this.catalogRange,
+    this.catalogRange,
   });
 
   final int localityId;
   final int collectionEventId;
   final List<int> specimenIds;
 
-  /// 発行した標本番号。例: `KYC00123〜KYC00137`
-  final String catalogRange;
+  /// 確定した標本番号。例: `KYC00123〜KYC00137`。番号は確定の操作で付けるので、確定しなかったときは null。
+  final String? catalogRange;
 }
 
 /// 記録の保存と採番(要件定義 第12章・第14章)。
@@ -105,16 +109,9 @@ class RecordService {
 
   final AppDatabase _db;
 
-  /// 記録画面に出す、発行予定の番号。初回設定前は null。
-  Future<String?> previewCatalogRange(int count) async {
-    final settings = await _db.select(_db.appSettings).getSingle();
-    final next = settings.nextCatalogNumber;
-    if (next == null) return null;
-    return _formatOf(settings).formatRange(next, count);
-  }
-
-  /// 保存する。地点・採集・標本(作成数ぶん)・次の番号の更新を1つのトランザクションで書く。
-  /// 途中で失敗したら、全部が無かったことになる。番号は飛ばず、重複しない。
+  /// 保存する。地点・採集・標本(作成数ぶん)を1つのトランザクションで書く。
+  /// 途中で失敗したら、全部が無かったことになる。
+  /// 標本には番号を付けない(仮)。番号は、個体数などを直してから、確定の操作で付ける(第14章)。
   Future<RecordResult> save(RecordInput input) {
     if (input.count < 1) {
       throw ArgumentError.value(input.count, 'count', '作成数は1以上です');
@@ -122,8 +119,8 @@ class RecordService {
 
     return _db.transaction(() async {
       final settings = await _db.select(_db.appSettings).getSingle();
-      final first = settings.nextCatalogNumber;
-      if (first == null) throw CatalogNotInitializedException();
+      // 初回設定(開始番号)が済んでいなければ、記録できない
+      if (settings.nextCatalogNumber == null) throw CatalogNotInitializedException();
 
       final localityId = await _resolveLocality(input.position);
 
@@ -148,26 +145,19 @@ class RecordService {
       await dictionary.rememberText(DictTextKind.habitat, input.habitat);
       await dictionary.rememberText(DictTextKind.hostPlant, input.hostPlant);
 
-      final format = _formatOf(settings);
       final specimenIds = <int>[];
       for (var i = 0; i < input.count; i++) {
-        final number = first + i;
         specimenIds.add(
           await _db.into(_db.specimens).insert(
             SpecimensCompanion.insert(
               collectionEventId: eventId,
-              catalogNumber: number,
-              catalogText: format.format(number),
               sex: Value(input.sex),
               remarks: Value(_clean(input.remarks)),
             ),
           ),
         );
       }
-
-      await _db.update(_db.appSettings).write(
-        AppSettingsCompanion(nextCatalogNumber: Value(first + input.count)),
-      );
+      final confirmed = input.confirmNow ? await CatalogNumberService.confirmWithin(_db, specimenIds) : null;
 
       if (input.draftId case final id?) {
         await (_db.delete(_db.drafts)..where((d) => d.id.equals(id))).go();
@@ -177,7 +167,7 @@ class RecordService {
         localityId: localityId,
         collectionEventId: eventId,
         specimenIds: specimenIds,
-        catalogRange: format.formatRange(first, input.count),
+        catalogRange: confirmed?.range,
       );
     });
   }
@@ -258,9 +248,6 @@ class RecordService {
     if (code == null || ja == null || en == null) return;
     await rememberPlaceRomaji(_db, municipalityCode: code, localityJa: ja, localityEn: en);
   }
-
-  static CatalogNumberFormat _formatOf(AppSettingsRow s) =>
-      CatalogNumberFormat(prefix: s.catalogPrefix, digits: s.catalogDigits);
 
   static String? _clean(String? value) {
     final trimmed = value?.trim();

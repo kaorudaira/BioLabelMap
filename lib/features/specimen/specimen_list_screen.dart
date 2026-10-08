@@ -198,11 +198,40 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
               final done = await context.push<bool>('/identify', extra: IdentifyArgs(ids));
               if (done == true && mounted) _exitSelectMode();
             }),
+            action(Icons.pin, '番号確定', () => _confirmNumbers(ids)),
             action(Icons.delete_outline, '削除', () => _delete(ids)),
           ],
         ),
       ),
     );
+  }
+
+  /// 選んだ標本のうち、番号が未確定(仮)の標本に、番号を付ける(要件定義 第14章)。保存した順に、続きの番号を付ける。
+  Future<void> _confirmNumbers(List<int> ids) async {
+    final selected = ids.toSet();
+    final pending = (ref.read(specimenItemsProvider).value ?? const <SpecimenListItem>[])
+        .where((i) => selected.contains(i.id) && i.provisional)
+        .length;
+    if (pending == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('選んだ標本に、番号が未確定のものはありません')));
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('$pending件の番号を確定しますか'),
+        content: const Text('番号が未確定の標本に、保存した順に、続きの番号を付けます。確定した番号は戻せません。個体数などを直す場合は、先に直してください。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('やめる')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('番号を確定')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final result = await ref.read(catalogNumberServiceProvider).confirm(ids);
+    if (!mounted) return;
+    _exitSelectMode();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${result.count}件の番号を確定しました(${result.range})')));
   }
 
   /// ごみ箱に移す。期間内なら、ごみ箱から元に戻せる。

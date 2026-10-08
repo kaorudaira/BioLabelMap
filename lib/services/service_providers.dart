@@ -15,6 +15,7 @@ import '../core/tiles/offline_tile_store.dart';
 import '../domain/specimen_list.dart';
 import '../domain/species_catalog.dart';
 import 'backup_service.dart';
+import 'catalog_number_service.dart';
 import 'dictionary_service.dart';
 import 'draft_service.dart';
 import 'identification_service.dart';
@@ -60,6 +61,10 @@ final labelFontsProvider = FutureProvider((ref) => LabelFonts.load());
 
 final specimenServiceProvider = Provider(
   (ref) => SpecimenService(ref.watch(databaseProvider)),
+);
+
+final catalogNumberServiceProvider = Provider(
+  (ref) => CatalogNumberService(ref.watch(databaseProvider)),
 );
 
 final specimenEditServiceProvider = Provider(

@@ -34,12 +34,12 @@ class SpecimenDetailScreen extends ConsumerWidget {
           return Scaffold(appBar: AppBar(), body: const Center(child: Text('標本が見つかりません')));
         }
         return Scaffold(
-          appBar: AppBar(title: Text(d.specimen.catalogText)),
+          appBar: AppBar(title: Text(d.specimen.catalogText ?? provisionalLabel)),
           body: ListView(
             padding: const EdgeInsets.all(12),
             children: [
               _identification(context, d),
-              _specimen(context, d),
+              _specimen(context, ref, d),
               _collecting(context, d),
               _locality(context, d),
               _history(context, d),
@@ -82,12 +82,43 @@ class SpecimenDetailScreen extends ConsumerWidget {
     );
   }
 
+  /// 番号を確定する(要件定義 第14章)。この標本だけか、この採集の未確定の標本をすべてか、選べる。
+  Future<void> _confirmNumber(BuildContext context, WidgetRef ref, SpecimenDetail d) async {
+    final all = d.provisionalIdsInEvent;
+    final scope = await showDialog<List<int>>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('番号を確定しますか'),
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Text('保存した順に、続きの番号を付けます。確定した番号は戻せません。個体数などを直す場合は、先に直してください。'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, [d.specimen.id]),
+            child: const Text('この標本だけ'),
+          ),
+          if (all.length > 1)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, all),
+              child: Text('この採集の未確定の標本すべて(${all.length}件)'),
+            ),
+          SimpleDialogOption(onPressed: () => Navigator.pop(context), child: const Text('やめる')),
+        ],
+      ),
+    );
+    if (scope == null || !context.mounted) return;
+    final result = await ref.read(catalogNumberServiceProvider).confirm(scope);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${result.count}件の番号を確定しました(${result.range})')));
+  }
+
   /// ごみ箱に移して、一覧に戻る。
   Future<void> _delete(BuildContext context, WidgetRef ref, SpecimenDetail d) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('${d.specimen.catalogText}をごみ箱に移しますか'),
+        title: Text('${d.specimen.catalogText ?? provisionalLabel}の標本をごみ箱に移しますか'),
         content: const Text('30日以内なら、ごみ箱から元の標本番号のまま戻せます。'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('やめる')),
@@ -132,13 +163,20 @@ class SpecimenDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _specimen(BuildContext context, SpecimenDetail d) {
+  Widget _specimen(BuildContext context, WidgetRef ref, SpecimenDetail d) {
     final s = d.specimen;
     return FormBlock(
       color: BlockColors.specimen,
       title: '標本',
+      trailing: s.catalogNumber == null && s.deletedAt == null
+          ? TextButton.icon(
+              onPressed: () => _confirmNumber(context, ref, d),
+              icon: const Icon(Icons.pin),
+              label: const Text('番号を確定'),
+            )
+          : null,
       children: [
-        _Field('標本番号', s.catalogText),
+        _Field('標本番号', s.catalogText ?? provisionalLabel),
         _Field('性別', switch (s.sex) {
           Sex.male => '♂',
           Sex.female => '♀',

@@ -46,7 +46,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -68,6 +68,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4) {
         await m.createTable(speciesDict);
         await m.createTable(textDict);
+      }
+      // 4 → 5: 標本番号を、確定するまで空にできる(仮)
+      if (from < 5) {
+        await m.alterTable(TableMigration(specimens));
       }
     },
     beforeOpen: (details) async {

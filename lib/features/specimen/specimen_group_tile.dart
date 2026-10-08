@@ -131,7 +131,7 @@ Future<void> openSpecimenGroup(BuildContext context, SpecimenGroup group) async 
           for (final item in group.items)
             ListTile(
               leading: Icon(item.printed ? Icons.print : Icons.print_disabled, color: item.printed ? null : warningColor),
-              title: Text(item.catalogText),
+              title: Text(item.catalogDisplay),
               subtitle: Text(item.printed ? '印刷済み' : '未印刷'),
               onTap: () => Navigator.pop(context, item.id),
             ),
