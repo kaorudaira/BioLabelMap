@@ -29,22 +29,32 @@ class MapQueryService {
 
   /// 標本がある地点を、件数付きで返す。DB が変わるたびに流れ直す。
   ///
-  /// 同じ地点の標本は1つのピンにまとめる(地点のテーブルが小数4桁で同一地点をまとめている)。
-  /// 未同定は「仮同定・同定済みの同定が1件も無い」標本。
+  /// 同じ場所(緯度経度を小数4桁で切り捨てたキーが同じ)の標本は、地点の行が複数あっても、
+  /// 1つのピンにまとめる。地名の修正で標本の一部だけを別の地点に付け替えると、同じ座標に地点の行が
+  /// 増えるが、ピンが重なって隠れないようにするため。ピンの地点は、その場所のいちばん古い地点にする。
+  /// 未同定は「最新の同定が、仮同定・同定済みのいずれでもない(同定が無い、または未同定)」標本。
   Stream<List<LocalityPin>> watchPins() => _db
       .customSelect(
         '''
-        SELECT l.id AS id, l.latitude AS latitude, l.longitude AS longitude,
-               COUNT(s.id) AS specimen_count,
-               SUM(CASE WHEN EXISTS (
-                     SELECT 1 FROM identifications i
-                     WHERE i.specimen_id = s.id AND i.status <> 'unidentified'
-                   ) THEN 0 ELSE 1 END) AS unidentified_count
-        FROM localities l
-        JOIN collection_events e ON e.locality_id = l.id
-        JOIN specimens s ON s.collection_event_id = e.id
-        WHERE s.deleted_at IS NULL
-        GROUP BY l.id
+        SELECT r.id AS id, r.latitude AS latitude, r.longitude AS longitude,
+               t.specimen_count AS specimen_count, t.unidentified_count AS unidentified_count
+        FROM (
+          SELECT MIN(l.id) AS rep_id,
+                 COUNT(s.id) AS specimen_count,
+                 SUM(CASE WHEN EXISTS (
+                       SELECT 1 FROM identifications i
+                       WHERE i.specimen_id = s.id
+                         AND i.id = (SELECT MAX(x.id) FROM identifications x WHERE x.specimen_id = s.id)
+                         AND i.status <> 'unidentified'
+                     ) THEN 0 ELSE 1 END) AS unidentified_count
+          FROM localities l
+          JOIN collection_events e ON e.locality_id = l.id
+          JOIN specimens s ON s.collection_event_id = e.id
+          WHERE s.deleted_at IS NULL
+          GROUP BY l.lat_e4, l.lon_e4
+        ) t
+        JOIN localities r ON r.id = t.rep_id
+        ORDER BY r.id
         ''',
         readsFrom: {
           _db.localities,

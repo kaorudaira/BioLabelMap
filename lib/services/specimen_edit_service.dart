@@ -7,6 +7,18 @@ import '../domain/sampling_method.dart';
 import '../domain/status.dart';
 import '../domain/trash.dart';
 
+/// 座標の修正が地点に及ぼす影響。
+enum _PositionEffect {
+  /// 変わらない(座標が同じ)。
+  none,
+
+  /// 同じ地点の範囲内(小数4桁が同じ)の微調整。
+  nudge,
+
+  /// 別の地点へ動かす。標高と地名を取り直す。
+  move,
+}
+
 /// 値を変えるか(変えるなら、新しい値。null で空にする)。「変えない」は、この箱ごと null にして表す。
 class Change<T> {
   const Change(this.value);
@@ -115,6 +127,13 @@ class SpecimenEditService {
         );
       }
       if (!edit.changesEvent && edit.place.isEmpty && edit.position == null) return;
+      // 座標だけの修正で、座標が変わらない(地図を動かさずに決めた)なら、採集も地点も作り直さない
+      if (!edit.changesEvent && edit.place.isEmpty) {
+        final eventIds = {for (final s in specimens) s.collectionEventId};
+        final events = await (_db.select(_db.collectionEvents)..where((e) => e.id.isIn(eventIds))).get();
+        final localities = await (_db.select(_db.localities)..where((l) => l.id.isIn({for (final e in events) e.localityId}))).get();
+        if (localities.every((l) => _positionEffect(l, edit.position) == _PositionEffect.none)) return;
+      }
 
       // 1. 採集ごとに、直す採集(そのまま、または複製)を決める
       final editedEvents = <int>{};
@@ -156,11 +175,14 @@ class SpecimenEditService {
       if (edit.place.isNotEmpty || edit.position != null) {
         final events = await (_db.select(_db.collectionEvents)..where((e) => e.id.isIn(editedEvents))).get();
         for (final localityId in {for (final e in events) e.localityId}) {
+          final original = await (_db.select(_db.localities)..where((l) => l.id.equals(localityId))).getSingle();
+          // 座標が同じ(または同じ地点の範囲内)なら、地点を作り直したり、標高・地名を取り直したりしない
+          final effect = _positionEffect(original, edit.position);
+          if (edit.place.isEmpty && effect == _PositionEffect.none) continue;
           final users = await (_db.select(_db.collectionEvents)..where((e) => e.localityId.equals(localityId))).get();
           final mine = [for (final e in events) if (e.localityId == localityId) e.id];
           var target = localityId;
           if (users.length != mine.length) {
-            final original = await (_db.select(_db.localities)..where((l) => l.id.equals(localityId))).getSingle();
             target = await _db.into(_db.localities).insert(original.toCompanion(false).copyWith(
               id: const Value.absent(),
               createdAt: Value(DateTime.now()),
@@ -169,8 +191,8 @@ class SpecimenEditService {
               CollectionEventsCompanion(localityId: Value(target)),
             );
           }
-          await (_db.update(_db.localities)..where((l) => l.id.equals(target))).write(_localityCompanion(edit));
-          if (edit.position != null) {
+          await (_db.update(_db.localities)..where((l) => l.id.equals(target))).write(_localityCompanion(edit, effect));
+          if (effect == _PositionEffect.move) {
             await _enqueue(target, EnrichmentKind.elevation);
             if (edit.place.isEmpty) await _enqueue(target, EnrichmentKind.place);
           }
@@ -187,9 +209,25 @@ class SpecimenEditService {
   );
 
   /// 地点に書く内容。座標を直したときは、標高と(地名を直していなければ)地名を空にして、取り直しに回す。
-  LocalitiesCompanion _localityCompanion(SpecimenEdit edit) {
+  /// 座標の修正が、この地点に何をもたらすか。
+  static _PositionEffect _positionEffect(Locality l, ({double latitude, double longitude})? p) {
+    if (p == null || (p.latitude == l.latitude && p.longitude == l.longitude)) return _PositionEffect.none;
+    final key = LocalityKey.fromCoordinates(p.latitude, p.longitude);
+    return key.latE4 == l.latE4 && key.lonE4 == l.lonE4 ? _PositionEffect.nudge : _PositionEffect.move;
+  }
+
+  LocalitiesCompanion _localityCompanion(SpecimenEdit edit, _PositionEffect effect) {
     var companion = edit.place.isEmpty ? const LocalitiesCompanion() : _placeCompanion(edit.place);
-    if (edit.position case final p?) {
+    final p = edit.position;
+    if (effect == _PositionEffect.nudge && p != null) {
+      // 同じ地点の範囲内の微調整:座標だけ直す。標高と地名は、そのまま
+      companion = companion.copyWith(
+        latitude: Value(p.latitude),
+        longitude: Value(p.longitude),
+        isManualPosition: const Value(true),
+        accuracyMeters: const Value(null),
+      );
+    } else if (effect == _PositionEffect.move && p != null) {
       final key = LocalityKey.fromCoordinates(p.latitude, p.longitude);
       companion = companion.copyWith(
         latitude: Value(p.latitude),
