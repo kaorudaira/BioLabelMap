@@ -16,6 +16,7 @@ import '../../domain/tiles/tile_math.dart';
 import '../../services/offline_map_service.dart';
 import '../../services/service_providers.dart';
 import '../map/offline_tile_layer.dart';
+import '../map/place_search_sheet.dart';
 
 /// 新しいエリアの保存(要件定義 S-08)。
 ///
@@ -109,6 +110,17 @@ class _OfflineAreaNewScreenState extends ConsumerState<OfflineAreaNewScreen> {
       if (!mounted || _nameEdited || municipality == null) return;
       _name.text = '$municipality周辺';
     });
+  }
+
+  /// 地名を検索して、選んだ場所の周辺に枠を置く。
+  Future<void> _searchPlace() async {
+    final hit = await showPlaceSearch(context);
+    if (hit == null || !mounted) return;
+    setState(() {
+      _left = _top = _right = _bottom = _margin;
+    });
+    _map.move(LatLng(hit.latitude, hit.longitude), 13);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _recompute());
   }
 
   void _goToCurrent() {
@@ -262,10 +274,21 @@ class _OfflineAreaNewScreenState extends ConsumerState<OfflineAreaNewScreen> {
                     Positioned(
                       right: 8,
                       top: 8,
-                      child: FilledButton.tonalIcon(
-                        onPressed: _goToCurrent,
-                        icon: const Icon(Icons.my_location, size: 18),
-                        label: const Text('現在地の周辺'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          FilledButton.tonalIcon(
+                            onPressed: _searchPlace,
+                            icon: const Icon(Icons.search, size: 18),
+                            label: const Text('地名検索'),
+                          ),
+                          const SizedBox(height: 6),
+                          FilledButton.tonalIcon(
+                            onPressed: _goToCurrent,
+                            icon: const Icon(Icons.my_location, size: 18),
+                            label: const Text('現在地の周辺'),
+                          ),
+                        ],
                       ),
                     ),
                     const Positioned(
