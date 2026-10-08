@@ -276,16 +276,17 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
           if (!_single)
             const Padding(
               padding: EdgeInsets.only(bottom: 8),
-              child: Text('選んだ標本の地名と採集方法を、まとめて直します。空欄の項目は変えません。'),
+              child: Text('選んだ標本の同定(追加)、地名、採集方法を、まとめて直します。空欄の項目は変えません。'),
             ),
+          // 標本詳細(S-05)と同じ順:同定、標本、採集、地点
+          _identificationBlock(),
+          if (_canChangeCount) _countBlock(),
+          if (_single) _specimenBlock(),
           if (_single) _dateBlock(),
           _methodBlock(),
           if (_single) _habitatBlock(),
-          if (_canChangeCount) _countBlock(),
-          if (_single) _specimenBlock(),
           if (_single) _positionBlock(),
           _placeBlock(),
-          _identificationBlock(),
         ],
       ),
       bottomNavigationBar: SafeArea(
