@@ -10,7 +10,7 @@ import '../../domain/status.dart';
 import '../../services/service_providers.dart';
 import '../record/record_form.dart';
 import '../record/record_screen.dart';
-import 'specimen_group_tile.dart';
+import 'specimen_selection.dart';
 
 /// 地点詳細(要件定義 S-03)。ピンをタップして開く。「どの虫を、いつ採ったか」が上から読める順に並べる。
 class LocalityDetailScreen extends ConsumerStatefulWidget {
@@ -19,12 +19,18 @@ class LocalityDetailScreen extends ConsumerStatefulWidget {
   final int localityId;
 
   @override
-  ConsumerState<LocalityDetailScreen> createState() => _LocalityDetailScreenState();
+  ConsumerState<LocalityDetailScreen> createState() =>
+      _LocalityDetailScreenState();
 }
 
 class _LocalityDetailScreenState extends ConsumerState<LocalityDetailScreen> {
   /// 並び替え。日付順(既定、新しい日から)と、種ごと。
   var _sort = SpecimenSort.dateDesc;
+  final _selection = SpecimenSelection();
+
+  void _changed() => setState(() {});
+
+  void _exitSelectMode() => setState(_selection.exit);
 
   @override
   Widget build(BuildContext context) {
@@ -32,10 +38,16 @@ class _LocalityDetailScreenState extends ConsumerState<LocalityDetailScreen> {
     final items = ref.watch(specimenItemsProvider);
     final l = locality.value;
     if (locality.isLoading || items.isLoading) {
-      return Scaffold(appBar: AppBar(title: const Text('地点')), body: const Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AppBar(title: const Text('地点')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
     if (l == null) {
-      return Scaffold(appBar: AppBar(title: const Text('地点')), body: const Center(child: Text('地点が見つかりません')));
+      return Scaffold(
+        appBar: AppBar(title: const Text('地点')),
+        body: const Center(child: Text('地点が見つかりません')),
+      );
     }
 
     // 同じ場所(緯度経度の判定キーが同じ)の標本をすべて出す。地名の修正で地点を複製しても、1つにまとまる
@@ -52,44 +64,90 @@ class _LocalityDetailScreenState extends ConsumerState<LocalityDetailScreen> {
       locality: l.localityJa,
     );
 
-    return Scaffold(
-      appBar: AppBar(title: Text(placeJa.isEmpty ? '地点' : placeJa)),
-      body: ListView(
-        children: [
-          _Header(locality: l, placeJa: placeJa, count: here.length, span: span),
-          if (here.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-              child: SegmentedButton<SpecimenSort>(
-                segments: const [
-                  ButtonSegment(value: SpecimenSort.dateDesc, label: Text('日付順')),
-                  ButtonSegment(value: SpecimenSort.species, label: Text('種ごと')),
+    // 標本を移したなどで、この地点から消えた標本は選択から外す
+    _selection.prune({for (final i in here) i.id});
+
+    return PopScope(
+      canPop: !_selection.mode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _exitSelectMode();
+      },
+      child: Scaffold(
+        appBar: _selection.mode
+            ? buildSelectionAppBar(
+                selection: _selection,
+                visible: {
+                  for (final g in groups) ...SpecimenSelection.idsOf(g),
+                },
+                onExit: _exitSelectMode,
+                onChanged: _changed,
+              )
+            : AppBar(
+                title: Text(placeJa.isEmpty ? '地点' : placeJa),
+                actions: [
+                  if (here.isNotEmpty)
+                    IconButton(
+                      tooltip: '選択',
+                      icon: const Icon(Icons.checklist),
+                      onPressed: () => setState(() => _selection.mode = true),
+                    ),
                 ],
-                selected: {_sort},
-                onSelectionChanged: (s) => setState(() => _sort = s.first),
               ),
+        body: ListView(
+          children: [
+            _Header(
+              locality: l,
+              placeJa: placeJa,
+              count: here.length,
+              span: span,
             ),
-          if (here.isEmpty)
-            const Padding(padding: EdgeInsets.all(32), child: Center(child: Text('この地点の標本はありません'))),
-          for (final g in groups) ...[
-            SpecimenGroupTile(
-              group: g,
-              showPlace: false,
-              onTap: () => openSpecimenGroup(context, g),
-            ),
-            const Divider(height: 1),
+            if (here.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                child: SegmentedButton<SpecimenSort>(
+                  segments: const [
+                    ButtonSegment(
+                      value: SpecimenSort.dateDesc,
+                      label: Text('日付順'),
+                    ),
+                    ButtonSegment(
+                      value: SpecimenSort.species,
+                      label: Text('種ごと'),
+                    ),
+                  ],
+                  selected: {_sort},
+                  onSelectionChanged: (s) => setState(() => _sort = s.first),
+                ),
+              ),
+            if (here.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: Text('この地点の標本はありません')),
+              ),
+            for (final g in groups)
+              SpecimenGroupRow(
+                group: g,
+                selection: _selection,
+                onChanged: _changed,
+                showPlace: false,
+              ),
           ],
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: FilledButton.icon(
-            onPressed: () => _addHere(l, here),
-            icon: const Icon(Icons.add_location_alt),
-            label: const Text('この地点で追加'),
-          ),
         ),
+        bottomNavigationBar: _selection.mode
+            ? SpecimenSelectionBar(
+                selectedIds: _selection.selected,
+                onDone: _exitSelectMode,
+              )
+            : SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: FilledButton.icon(
+                    onPressed: () => _addHere(l, here),
+                    icon: const Icon(Icons.add_location_alt),
+                    label: const Text('この地点で追加'),
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -98,7 +156,11 @@ class _LocalityDetailScreenState extends ConsumerState<LocalityDetailScreen> {
   Future<void> _addHere(Locality l, List<SpecimenListItem> here) async {
     RecordForm form;
     if (here.isEmpty) {
-      form = RecordForm.at(latitude: l.latitude, longitude: l.longitude, existingLocalityId: l.id);
+      form = RecordForm.at(
+        latitude: l.latitude,
+        longitude: l.longitude,
+        existingLocalityId: l.id,
+      );
     } else {
       // いちばん新しい採集(採集日が新しく、同じなら標本番号が大きいもの)をコピーする
       final latest = arrangeSpecimens(here).first.items.last;
@@ -111,7 +173,12 @@ class _LocalityDetailScreenState extends ConsumerState<LocalityDetailScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.locality, required this.placeJa, required this.count, required this.span});
+  const _Header({
+    required this.locality,
+    required this.placeJa,
+    required this.count,
+    required this.span,
+  });
 
   final Locality locality;
   final String placeJa;
@@ -138,15 +205,22 @@ class _Header extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: BlockColors.location.withValues(alpha: 0.06),
-        border: const Border(left: BorderSide(color: BlockColors.location, width: 6)),
+        border: const Border(
+          left: BorderSide(color: BlockColors.location, width: 6),
+        ),
       ),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            placeJa.isEmpty ? (l.placeStatus == FetchStatus.pending ? '地名 取得待ち' : '地名なし') : placeJa,
-            style: theme.textTheme.titleLarge?.copyWith(color: BlockColors.location, fontWeight: FontWeight.bold),
+            placeJa.isEmpty
+                ? (l.placeStatus == FetchStatus.pending ? '地名 取得待ち' : '地名なし')
+                : placeJa,
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: BlockColors.location,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           if (placeEn.isNotEmpty) Text(placeEn),
           const SizedBox(height: 4),
@@ -157,7 +231,9 @@ class _Header extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             ['$count件', if (span != null) formatPeriodText(span!)].join('、'),
-            style: theme.textTheme.titleMedium?.copyWith(color: BlockColors.specimen),
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: BlockColors.specimen,
+            ),
           ),
         ],
       ),

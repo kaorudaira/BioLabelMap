@@ -17,6 +17,10 @@ class SpecimenGroupTile extends StatelessWidget {
     this.withYear = true,
     this.selecting = false,
     this.selected = false,
+    this.partial = false,
+    this.expandable = false,
+    this.expanded = false,
+    this.onToggleExpand,
   });
 
   final SpecimenGroup group;
@@ -33,6 +37,14 @@ class SpecimenGroupTile extends StatelessWidget {
   final bool selecting;
   final bool selected;
 
+  /// 行の標本の一部だけを選んでいる(チェックを「半分」の表示にする)。
+  final bool partial;
+
+  /// 展開して、標本を1件ずつ選べる行か。展開しているときは [expanded]。
+  final bool expandable;
+  final bool expanded;
+  final VoidCallback? onToggleExpand;
+
   @override
   Widget build(BuildContext context) {
     final first = group.first;
@@ -44,7 +56,7 @@ class SpecimenGroupTile extends StatelessWidget {
       onLongPress: onLongPress,
       child: Container(
         decoration: BoxDecoration(
-          color: selected ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5) : null,
+          color: selected || partial ? theme.colorScheme.primaryContainer.withValues(alpha: selected ? 0.5 : 0.25) : null,
           border: const Border(left: BorderSide(color: BlockColors.specimen, width: 6)),
         ),
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -55,9 +67,9 @@ class SpecimenGroupTile extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 10, top: 2),
                 child: Icon(
-                  selected ? Icons.check_circle : Icons.circle_outlined,
-                  color: selected ? theme.colorScheme.primary : null,
-                  semanticLabel: selected ? '選択中' : '未選択',
+                  selected ? Icons.check_circle : (partial ? Icons.remove_circle : Icons.circle_outlined),
+                  color: selected || partial ? theme.colorScheme.primary : null,
+                  semanticLabel: selected ? '選択中' : (partial ? '一部を選択中' : '未選択'),
                 ),
               ),
             // 同定の印は左の枠に置き、和名・採集日・採集方法・件数は、同じ位置から始める
@@ -90,6 +102,13 @@ class SpecimenGroupTile extends StatelessWidget {
                 ],
               ),
             ),
+            if (expandable)
+              IconButton(
+                tooltip: expanded ? '標本を閉じる' : '標本を1件ずつ選ぶ',
+                visualDensity: VisualDensity.compact,
+                icon: Icon(expanded ? Icons.expand_less : Icons.expand_more),
+                onPressed: onToggleExpand,
+              ),
             if (group.hasLabelMismatch)
               const Tooltip(
                 message: 'ラベルと不一致',

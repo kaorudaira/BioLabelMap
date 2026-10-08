@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../common/clear_button.dart';import 'package:flutter/services.dart';
+import '../common/clear_button.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/catalog_number.dart';
