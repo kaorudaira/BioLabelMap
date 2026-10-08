@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../domain/specimen_list.dart';
+import '../../services/service_providers.dart';
+import 'bulk_edit_screen.dart';
 import 'species_name_text.dart';
 import 'status_mark.dart';
 
@@ -126,37 +129,171 @@ class SpecimenGroupTile extends StatelessWidget {
   }
 }
 
-/// 行をタップしたとき。1件ならそのまま標本詳細へ、複数なら、どの標本を開くか選ぶ。
+/// 行をタップしたとき。1件ならそのまま標本詳細へ、複数なら、開く標本を選ぶシートを出す。
+/// シートでは、標本ごとの「編集」、見出しの「全てまとめて編集」「選んで編集」もできる。
 Future<void> openSpecimenGroup(BuildContext context, SpecimenGroup group) async {
   if (group.count == 1) {
     context.push('/specimens/${group.first.id}');
     return;
   }
-  final id = await showModalBottomSheet<int>(
+  final action = await showModalBottomSheet<_SheetAction>(
     context: context,
     isScrollControlled: true,
-    builder: (context) => SafeArea(
-      child: ListView(
-        shrinkWrap: true,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: SpeciesNameText(
-              group.first.species,
-              suffix: ' ×${group.count}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
-          for (final item in group.items)
-            ListTile(
-              leading: Icon(item.printed ? Icons.print : Icons.print_disabled, color: item.printed ? null : warningColor),
-              title: Text(item.catalogDisplay),
-              subtitle: Text(item.printed ? '印刷済み' : '未印刷'),
-              onTap: () => Navigator.pop(context, item.id),
-            ),
-        ],
-      ),
-    ),
+    builder: (context) => _GroupSheet(group: group),
   );
-  if (id != null && context.mounted) context.push('/specimens/$id');
+  if (action == null || !context.mounted) return;
+  switch (action) {
+    case _OpenSpecimen(:final id):
+      context.push('/specimens/$id');
+    case _EditSpecimen(:final id):
+      // 1件の編集は、いまの内容を渡して、編集画面を開く
+      final detail = await ProviderScope.containerOf(context).read(specimenServiceProvider).detail(id);
+      if (detail != null && context.mounted) {
+        context.push('/bulk-edit', extra: BulkEditArgs([id], initial: detail));
+      }
+    case _EditSpecimens(:final ids):
+      context.push('/bulk-edit', extra: BulkEditArgs(ids));
+  }
+}
+
+/// シートで選んだ操作。
+sealed class _SheetAction {
+  const _SheetAction();
+}
+
+final class _OpenSpecimen extends _SheetAction {
+  const _OpenSpecimen(this.id);
+  final int id;
+}
+
+final class _EditSpecimen extends _SheetAction {
+  const _EditSpecimen(this.id);
+  final int id;
+}
+
+final class _EditSpecimens extends _SheetAction {
+  const _EditSpecimens(this.ids);
+  final List<int> ids;
+}
+
+/// 行の標本を1件ずつ見せるシート。
+class _GroupSheet extends StatefulWidget {
+  const _GroupSheet({required this.group});
+
+  final SpecimenGroup group;
+
+  @override
+  State<_GroupSheet> createState() => _GroupSheetState();
+}
+
+class _GroupSheetState extends State<_GroupSheet> {
+  /// 「選んで編集」のために、標本を選んでいる最中か。
+  var _choosing = false;
+  final _chosen = <int>{};
+
+  @override
+  Widget build(BuildContext context) {
+    final group = widget.group;
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: SpeciesNameText(
+                      group.first.species,
+                      suffix: ' ×${group.count}',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  if (_choosing)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton(
+                          onPressed: () => setState(() {
+                            _choosing = false;
+                            _chosen.clear();
+                          }),
+                          child: const Text('やめる'),
+                        ),
+                        FilledButton(
+                          onPressed: _chosen.isEmpty
+                              ? null
+                              : () => Navigator.pop(context, _EditSpecimens(_chosen.toList()..sort())),
+                          child: Text('編集(${_chosen.length}件)'),
+                        ),
+                      ],
+                    )
+                  else
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () => Navigator.pop(context, _EditSpecimens([for (final i in group.items) i.id])),
+                          child: const Text('全てまとめて編集'),
+                        ),
+                        const SizedBox(width: 6),
+                        OutlinedButton(
+                          onPressed: () => setState(() => _choosing = true),
+                          child: const Text('選んで編集'),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+            if (_choosing)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                child: Text('編集する標本を選んでください', style: theme.textTheme.bodySmall),
+              ),
+            const Divider(height: 1),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final item in group.items)
+                    ListTile(
+                      leading: _choosing
+                          ? Checkbox(
+                              value: _chosen.contains(item.id),
+                              onChanged: (_) => setState(() => _toggle(item.id)),
+                            )
+                          : Icon(
+                              item.printed ? Icons.print : Icons.print_disabled,
+                              color: item.printed ? null : warningColor,
+                            ),
+                      title: Text(item.catalogDisplay),
+                      subtitle: Text(item.printed ? '印刷済み' : '未印刷'),
+                      // 各行の右端に、この標本だけを編集するボタン
+                      trailing: _choosing
+                          ? null
+                          : IconButton(
+                              tooltip: '${item.catalogDisplay}を編集',
+                              icon: const Icon(Icons.edit),
+                              onPressed: () => Navigator.pop(context, _EditSpecimen(item.id)),
+                            ),
+                      onTap: _choosing ? () => setState(() => _toggle(item.id)) : () => Navigator.pop(context, _OpenSpecimen(item.id)),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _toggle(int id) => _chosen.contains(id) ? _chosen.remove(id) : _chosen.add(id);
 }
