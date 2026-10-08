@@ -320,3 +320,33 @@ String formatPlaceEn({String? prefecture, String? county, String? municipality, 
 String formatLatLon(double latitude, double longitude, {int digits = 5}) =>
     '${latitude.abs().toStringAsFixed(digits)}°${latitude < 0 ? 'S' : 'N'} '
     '${longitude.abs().toStringAsFixed(digits)}°${longitude < 0 ? 'W' : 'E'}';
+
+/// 地図の吹き出しに出す、登録されている和名の一覧(件数つき)。
+///
+/// 同じ種は1行にまとめ、件数の多い順(同じなら和名の50音順)に並べる。和名が無い種は学名を、
+/// 同定が無い標本は「未同定」を、最後にまとめる。[maxLines] を超える種は、「ほかN種」にまとめる。
+List<String> speciesSummaryLines(Iterable<SpecimenListItem> items, {int maxLines = 4}) {
+  final bySpecies = <SpeciesName, int>{};
+  var unidentified = 0;
+  for (final i in items) {
+    if (i.species.isEmpty) {
+      unidentified++;
+    } else {
+      bySpecies.update(i.species, (n) => n + 1, ifAbsent: () => 1);
+    }
+  }
+  final species = bySpecies.entries.toList()
+    ..sort((a, b) {
+      final c = b.value.compareTo(a.value);
+      return c != 0 ? c : compareByVernacular(a.key, b.key);
+    });
+  String line(String name, int n) => n > 1 ? '$name ×$n' : name;
+  final lines = [for (final e in species) line(e.key.vernacular ?? e.key.scientific!, e.value)];
+  final tail = unidentified > 0 ? line('未同定', unidentified) : null;
+
+  final room = tail == null ? maxLines : maxLines - 1;
+  if (lines.length <= room) return [...lines, ?tail];
+  // 入りきらない種は「ほかN種」にまとめる(その行も、1行に数える)
+  final shown = room - 1;
+  return [...lines.take(shown), 'ほか${lines.length - shown}種', ?tail];
+}
