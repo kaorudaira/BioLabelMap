@@ -501,41 +501,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     context.push('/record', extra: RecordArgs(form));
   }
 
-  /// ピンをタップしたとき。地点詳細(S-03)は段階3で作るので、いまは件数と「この地点で追加」だけ。
-  Future<void> _showPin(LocalityPin pin) async {
-    final add = await showModalBottomSheet<bool>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('標本 ${pin.specimenCount}件', style: Theme.of(context).textTheme.titleLarge),
-              if (pin.unidentifiedCount > 0) Text('うち未同定 ${pin.unidentifiedCount}件'),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () => Navigator.pop(context, true),
-                icon: const Icon(Icons.add),
-                label: const Text('この地点で追加'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (add == true && mounted) {
-      context.push(
-        '/record',
-        extra: RecordArgs(RecordForm.at(
-          latitude: pin.latitude,
-          longitude: pin.longitude,
-          existingLocalityId: pin.localityId,
-        )),
-      );
-    }
-  }
+  /// ピンをタップしたとき。その地点の標本を一覧する地点詳細(S-03)を開く。
+  void _showPin(LocalityPin pin) => context.push('/localities/${pin.localityId}');
 
   static String _formatTime(DateTime t) =>
       '${t.month}/${t.day} ${t.hour}:${t.minute.toString().padLeft(2, '0')}';

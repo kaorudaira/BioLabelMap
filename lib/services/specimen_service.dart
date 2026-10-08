@@ -57,6 +57,12 @@ class SpecimenService {
   Stream<List<SpecimenListItem>> watchItems({bool trashed = false}) =>
       _changes.asyncMap((_) => _loadItems(trashed: trashed));
 
+  /// 地点1件。見つからなければ null。
+  Stream<Locality?> watchLocality(int localityId) => _db
+      .customSelect('SELECT 1', readsFrom: {_db.localities})
+      .watch()
+      .asyncMap((_) => (_db.select(_db.localities)..where((l) => l.id.equals(localityId))).getSingleOrNull());
+
   /// 標本1件の詳細。見つからなければ null。
   Stream<SpecimenDetail?> watchDetail(int specimenId) => _changes.asyncMap((_) => _loadDetail(specimenId));
 

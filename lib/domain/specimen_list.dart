@@ -248,3 +248,13 @@ String formatPlaceJa({String? prefecture, String? county, String? municipality, 
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
         .join();
+
+/// 標本の採集日の範囲(いちばん早い開始日〜いちばん遅い終了日)。標本が無ければ null。
+CollectionPeriod? periodSpanOf(Iterable<SpecimenListItem> items) {
+  CalendarDate? start, end;
+  for (final i in items) {
+    if (start == null || i.period.start.isBefore(start)) start = i.period.start;
+    if (end == null || end.isBefore(i.period.end)) end = i.period.end;
+  }
+  return start == null ? null : CollectionPeriod(start, end!);
+}
