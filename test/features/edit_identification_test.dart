@@ -148,7 +148,7 @@ void main() {
     }
 
     Future<void> pump(WidgetTester tester, {required List<int> targets, bool single = false}) async {
-      tester.view.physicalSize = const Size(800, 4000);
+      tester.view.physicalSize = const Size(800, 9000);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       final initial = single ? (await tester.runAsync(() => SpecimenService(db).detail(targets.single))) : null;
@@ -378,6 +378,25 @@ void main() {
       await tester.enterText(field('大字(ローマ字)'), 'y');
       await save(tester, '3件に反映');
       expect((await tester.runAsync(history))!, isEmpty);
+    });
+
+    testWidgets('編集の画面は、標本詳細と同じ順:同定、標本、採集、地点の順に並ぶ。同定が先頭', (tester) async {
+      await seed(tester);
+      await pump(tester, targets: [ids[0]], single: true);
+      double y(String t) => tester.getTopLeft(find.text(t).first).dy;
+      expect(y('同定を追加(任意)'), lessThan(y('標本')));
+      expect(y('標本'), lessThan(y('採集日')));
+      expect(y('採集日'), lessThan(y('採集方法')));
+      expect(y('採集方法'), lessThan(y('座標')));
+      expect(y('座標'), lessThan(y('地名')));
+    });
+
+    testWidgets('一括編集の画面も、同定が先頭で、そのあとに採集方法、地名の順', (tester) async {
+      await seed(tester);
+      await pump(tester, targets: ids);
+      double y(String t) => tester.getTopLeft(find.text(t).first).dy;
+      expect(y('同定を追加(任意)'), lessThan(y('採集方法')));
+      expect(y('採集方法'), lessThan(y('地名')));
     });
 
     testWidgets('編集:種名を変えると、新しい同定を履歴に追加する(上書きしない)', (tester) async {
