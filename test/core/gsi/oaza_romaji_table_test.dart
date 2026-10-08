@@ -27,40 +27,36 @@ void main() {
   });
 
   group('applyChoSuffixRule', () {
-    test('末尾の chō を -cho にする', () {
-      expect(applyChoSuffixRule('Tondenchō'), 'Tonden-cho');
-      expect(applyChoSuffixRule('Okadamachō'), 'Okadama-cho');
-      expect(applyChoSuffixRule('Higashi-chō'), 'Higashi-cho');
-      expect(applyChoSuffixRule('HAGIWARACHŌ'), 'HAGIWARA-CHO');
+    test('末尾の chō の前にハイフンを入れ、マクロンは残す', () {
+      expect(applyChoSuffixRule('Tondenchō'), 'Tonden-chō');
+      expect(applyChoSuffixRule('Okadamachō'), 'Okadama-chō');
+      expect(applyChoSuffixRule('HAGIWARACHŌ'), 'HAGIWARA-CHŌ');
     });
 
-    test('名前が chō だけなら、ハイフンを付けずにマクロンだけ外す', () {
-      expect(applyChoSuffixRule('Chō'), 'Cho');
+    test('すでにハイフンがあるときや、名前が chō だけのときは変えない', () {
+      expect(applyChoSuffixRule('Higashi-chō'), 'Higashi-chō');
+      expect(applyChoSuffixRule('Chō'), 'Chō');
     });
 
-    test('末尾でない chō や、ほかの長音は変えない', () {
+    test('末尾でない chō や、ほかの長音、マクロンのない cho は変えない', () {
       expect(applyChoSuffixRule('Chōnai'), 'Chōnai');
       expect(applyChoSuffixRule('Shimōritate'), 'Shimōritate');
       expect(applyChoSuffixRule('Nakajimakōen'), 'Nakajimakōen');
       expect(applyChoSuffixRule('Tsuchidaru'), 'Tsuchidaru');
-      // すでに -cho のもの
-      expect(applyChoSuffixRule('Tonden-cho'), 'Tonden-cho');
+      expect(applyChoSuffixRule('Tondencho'), 'Tondencho');
     });
 
-    test('ほかの長音を含むときは、chō だけ直し、確認は残る', () {
-      final table = OazaRomajiTable.parse(jsonEncode({'01101': {'本堂町': 'Hondōchō', '屯田町': 'Tondenchō'}}));
-      final hondo = table.lookup('01101', '本堂町')!;
-      expect(hondo.value, 'Hondō-cho');
-      expect(hondo.needsConfirmation, isTrue);
-      final tonden = table.lookup('01101', '屯田町')!;
-      expect(tonden.value, 'Tonden-cho');
-      expect(tonden.needsConfirmation, isFalse); // 他にマクロンがないので、確認なしで入る
+    test('マクロンが残るので、確認が要る', () {
+      final table = OazaRomajiTable.parse(jsonEncode({'01102': {'屯田町': 'Tondenchō'}}));
+      final tonden = table.lookup('01102', '屯田町')!;
+      expect(tonden.value, 'Tonden-chō');
+      expect(tonden.needsConfirmation, isTrue);
     });
 
-    test('同梱の対応表でも、末尾の chō は -cho になる', () {
+    test('同梱の対応表でも、末尾の chō の前にハイフンが入る', () {
       final bundled = OazaRomajiTable.parse(File('assets/data/oaza_romaji.json').readAsStringSync());
-      expect(bundled.lookup('01102', '屯田町')?.value, 'Tonden-cho');
-      expect(bundled.lookup('01103', '丘珠町')?.value, 'Okadama-cho');
+      expect(bundled.lookup('01102', '屯田町')?.value, 'Tonden-chō');
+      expect(bundled.lookup('01103', '丘珠町')?.value, 'Okadama-chō');
     });
   });
 
