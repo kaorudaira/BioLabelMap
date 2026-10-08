@@ -25,6 +25,7 @@ import 'map_query_service.dart';
 import 'offline_map_service.dart';
 import 'record_service.dart';
 import 'settings_service.dart';
+import 'specimen_edit_service.dart';
 import 'specimen_service.dart';
 
 // サービスの Provider。`ref.watch(他の Provider)` で依存を受け取る。
@@ -59,6 +60,14 @@ final labelFontsProvider = FutureProvider((ref) => LabelFonts.load());
 
 final specimenServiceProvider = Provider(
   (ref) => SpecimenService(ref.watch(databaseProvider)),
+);
+
+final specimenEditServiceProvider = Provider(
+  (ref) => SpecimenEditService(ref.watch(databaseProvider)),
+);
+
+final trashedItemsProvider = StreamProvider<List<SpecimenListItem>>(
+  (ref) => ref.watch(specimenServiceProvider).watchItems(trashed: true),
 );
 
 final dictionaryServiceProvider = Provider(

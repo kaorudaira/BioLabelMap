@@ -21,14 +21,18 @@ import '../record/romaji_candidate.dart';
 
 /// ラベル出力(要件定義 S-07)。段階1はデータラベルとコレクションラベルのみ。
 class LabelScreen extends ConsumerStatefulWidget {
-  const LabelScreen({super.key});
+  const LabelScreen({super.key, this.specimenIds});
+
+  /// 対象の標本。標本一覧や標本詳細から開いたときに、選んだ標本だけを出す。null なら、すべての標本。
+  final Set<int>? specimenIds;
 
   @override
   ConsumerState<LabelScreen> createState() => _LabelScreenState();
 }
 
 class _LabelScreenState extends ConsumerState<LabelScreen> {
-  var _unprintedOnly = true;
+  // 標本を選んで開いたときは、印刷済みでも対象にする
+  late var _unprintedOnly = widget.specimenIds == null;
   var _unit = LabelUnit.dataAndCollection;
   var _arrangement = LabelArrangement.bySpecimen;
   var _cutLines = true;
@@ -42,6 +46,7 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
     final candidates = ref.watch(labelCandidatesProvider);
     final visible = [
       for (final c in candidates.value ?? const <LabelCandidate>[])
+        if (widget.specimenIds == null || widget.specimenIds!.contains(c.specimen.id))
         // 未印刷のみは、データ・コレクションの印刷状態。同定ラベルだけを出すときは使わない
         if (!_unprintedOnly || _unit == LabelUnit.identificationOnly || !c.printed) c,
     ];
