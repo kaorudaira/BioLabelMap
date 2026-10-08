@@ -35,6 +35,16 @@ class AppDatabase extends _$AppDatabase {
   /// 端末内の SQLite ファイルを開く。テストでは `AppDatabase(NativeDatabase.memory())` を使う。
   factory AppDatabase.open() => AppDatabase(driftDatabase(name: 'biolabelmap'));
 
+  /// [tables] のどれかが変わるたびに流れる合図。
+  ///
+  /// drift は、同じ SQL の監視を1つの流れに共有する(読むテーブルが違っても、SQL が同じなら同じ流れ)。
+  /// そのため SQL は、読むテーブルの組ごとに別の文字列にする。
+  /// 共通の `SELECT 1` にすると、先に作られた流れの組が使われ、他の画面の変更が届かなくなる。
+  Stream<void> changesOf(Set<TableInfo> tables) {
+    final names = [for (final t in tables) t.actualTableName]..sort();
+    return customSelect("SELECT '${names.join(',')}'", readsFrom: tables).watch();
+  }
+
   @override
   int get schemaVersion => 4;
 
