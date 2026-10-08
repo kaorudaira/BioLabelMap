@@ -17,6 +17,7 @@ import '../../services/map_query_service.dart';
 import '../../services/service_providers.dart';
 import '../record/record_form.dart';
 import 'offline_tile_layer.dart';
+import 'place_search_sheet.dart';
 import '../record/record_screen.dart';
 
 /// 精度の警告しきい値(要件定義 F-06)。
@@ -39,6 +40,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   /// 地図の回転角(度)。0 が北向き。
   var _rotation = 0.0;
+
+  /// 地図のズームレベル(整数に丸めて表示する)。
+  var _zoom = 5;
 
   /// 二本指での回転を許すか。既定は北固定(野外で向きを見失わないため)。
   var _rotationEnabled = false;
@@ -90,6 +94,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               onPositionChanged: (camera, hasGesture) {
                 // 指で動かしたら、現在地への追従を外す
                 if (hasGesture && _following) setState(() => _following = false);
+                if (camera.zoom.round() != _zoom) setState(() => _zoom = camera.zoom.round());
                 // 回転の有無が変わったときだけ描き直す(「北に戻す」ボタンの出し入れ)
                 if (camera.rotation != _rotation) setState(() => _rotation = camera.rotation);
               },
@@ -170,17 +175,27 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Badge(
-            text: label,
-            color: color,
-            icon: Icons.gps_fixed,
-            // 位置が取れないときは、タップで取り直す
-            onTap: position.hasError ? () => ref.invalidate(positionProvider) : null,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Badge(
+                text: label,
+                color: color,
+                icon: Icons.gps_fixed,
+                // 位置が取れないときは、タップで取り直す
+                onTap: position.hasError ? () => ref.invalidate(positionProvider) : null,
+              ),
+              const SizedBox(height: 6),
+              // 地図のズームレベル(地理院タイルの Z)
+              _Badge(text: 'Z$_zoom', color: Colors.black87, icon: Icons.zoom_in),
+            ],
           ),
           const Spacer(),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              _Badge(text: '地名検索', color: Colors.black87, icon: Icons.search, onTap: _searchPlace),
+              const SizedBox(height: 6),
               _Badge(
                 text: _layer.label,
                 color: Colors.black87,
@@ -211,6 +226,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ],
       ),
     );
+  }
+
+  /// 地名を検索して、選んだ場所へ地図を移す。追従は外れるので、「記録」は十字の中央になる。
+  Future<void> _searchPlace() async {
+    final hit = await showPlaceSearch(context);
+    if (hit == null || !mounted) return;
+    setState(() {
+      _following = false;
+      _tempPin = null;
+    });
+    _map.move(LatLng(hit.latitude, hit.longitude), 15);
   }
 
   /// 回転できるモードと、北固定のモードを切り替える。北固定にするときは北向きに戻す。

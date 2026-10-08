@@ -41,7 +41,16 @@ class GsiAddress {
   final String? localityJa;
 }
 
-/// 国土地理院の標高API・逆ジオコーダ。
+/// 地名検索の1件。
+class PlaceHit {
+  const PlaceHit({required this.title, required this.latitude, required this.longitude});
+
+  final String title;
+  final double latitude;
+  final double longitude;
+}
+
+/// 国土地理院の標高API・逆ジオコーダ・地名検索。
 ///
 /// 利用規約の確認が取れるまでは、呼び出し側で1件ずつ順に呼ぶ(並列にしない)。
 class GsiApi {
@@ -54,6 +63,7 @@ class GsiApi {
   static final _elevationUrl = Uri.parse(
     'https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php',
   );
+  static final _searchUrl = Uri.parse('https://msearch.gsi.go.jp/address-search/AddressSearch');
   static final _reverseGeocoderUrl = Uri.parse(
     'https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress',
   );
@@ -104,6 +114,29 @@ class GsiApi {
       );
     }
     return const NotAvailable();
+  }
+
+  /// 地名・住所の検索(地理院の地名検索API)。住所・山や川などの自然地名・施設名が引ける。
+  /// 名前が検索語とそっくり同じものを先に並べ、あとは API の順。最大 [maxResults] 件。
+  Future<List<PlaceHit>> searchPlaces(String query, {int maxResults = 30}) async {
+    final q = query.trim();
+    if (q.isEmpty) return const [];
+    final json = await _getJson(_searchUrl.replace(queryParameters: {'q': q}));
+    if (json is! List) return const [];
+
+    final hits = <PlaceHit>[];
+    for (final item in json) {
+      if (item case {
+        'geometry': {'coordinates': [final num lon, final num lat]},
+        'properties': {'title': final String title},
+      }) {
+        hits.add(PlaceHit(title: title, latitude: lat.toDouble(), longitude: lon.toDouble()));
+      }
+    }
+    // sort は安定ではないので、完全一致を先にするときは分けて並べる
+    final exact = hits.where((h) => h.title == q);
+    final others = hits.where((h) => h.title != q);
+    return [...exact, ...others].take(maxResults).toList();
   }
 
   Future<Object?> _getJson(Uri url) async {
