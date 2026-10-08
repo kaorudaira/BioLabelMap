@@ -49,16 +49,29 @@ class OfflineFirstTileProvider extends NetworkTileProvider {
   final List<OfflineArea> areas;
   final GsiTileLayer layer;
 
-  @override
-  ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
+  /// 保存済みのタイルのファイル。保存していなければ null。
+  File? localFile(TileCoordinates coordinates) {
     final t = TileCoord(coordinates.z, coordinates.x, coordinates.y);
     for (final a in areas) {
       if (!a.layers.split(',').contains(layer.name)) continue;
       final bounds = GeoBounds(south: a.south, west: a.west, north: a.north, east: a.east);
       if (!coversTile(bounds, a.minZoom, a.maxZoom, t)) continue;
       final file = store.fileFor(a.id, layer, t);
-      if (file.existsSync()) return FileImage(file);
+      if (file.existsSync()) return file;
     }
-    return super.getImage(coordinates, options);
+    return null;
+  }
+
+  // NetworkTileProvider は supportsCancelLoading が true なので、flutter_map は getImage ではなく
+  // こちらを呼ぶ。getImage を上書きしても使われない
+  @override
+  ImageProvider getImageWithCancelLoadingSupport(
+    TileCoordinates coordinates,
+    TileLayer options,
+    Future<void> cancelLoading,
+  ) {
+    final file = localFile(coordinates);
+    if (file != null) return FileImage(file);
+    return super.getImageWithCancelLoadingSupport(coordinates, options, cancelLoading);
   }
 }
