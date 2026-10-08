@@ -15,7 +15,7 @@ class CatalogEntry {
   /// 和名。亜種の注記(`九州亜種` など)を除いたもの。和名が無いときは null。
   final String? vernacularBase;
 
-  /// 和名の後ろの注記。基亜種は除く。
+  /// 和名の後ろの注記(`基亜種`、`九州亜種` など)。
   final String? annotation;
   final String genus;
 
@@ -151,8 +151,7 @@ CatalogEntry? parseCatalogEntry(String vernacularField, String scientificField) 
 
   final parts = vernacular.split('　');
   final base = parts.first.trim();
-  var note = parts.skip(1).join('　').trim();
-  if (note == '基亜種') note = '';
+  final note = parts.skip(1).join('　').trim();
   return CatalogEntry(
     vernacularBase: base == '和名無し' || base.isEmpty ? null : base,
     annotation: note.isEmpty || base == '和名無し' ? null : note,
