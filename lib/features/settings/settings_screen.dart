@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../domain/catalog_number.dart';
 import '../../domain/label/collector_name_format.dart';
@@ -156,6 +157,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               leading: const Icon(Icons.lock_outline),
               title: Text('次の番号: $next'),
               subtitle: const Text('開始番号は初回にだけ設定でき、変更できません。番号は記録のたびに自動で進みます。'),
+            ),
+            const Divider(height: 40),
+            Text('辞書', style: textTheme.titleMedium),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.menu_book),
+              title: const Text('辞書管理'),
+              subtitle: const Text('地名のローマ字、種、環境・寄主植物の候補を編集します'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/dictionary'),
             ),
             const Divider(height: 40),
             Text('データの出典', style: textTheme.titleMedium),

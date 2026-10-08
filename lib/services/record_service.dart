@@ -2,11 +2,13 @@ import 'package:drift/drift.dart';
 
 import '../core/db/database.dart';
 import '../domain/catalog_number.dart';
+import '../domain/dictionary.dart';
 import '../domain/locality_key.dart';
 import '../domain/models/collection_period.dart';
 import '../domain/models/place_info.dart';
 import '../domain/sampling_method.dart';
 import '../domain/status.dart';
+import 'dictionary_service.dart';
 import 'locality_lookup_service.dart';
 import 'settings_service.dart';
 
@@ -140,6 +142,11 @@ class RecordService {
           collector: Value(settings.collectorName),
         ),
       );
+
+      // 環境・寄主植物は、次回から候補に出す
+      final dictionary = DictionaryService(_db);
+      await dictionary.rememberText(DictTextKind.habitat, input.habitat);
+      await dictionary.rememberText(DictTextKind.hostPlant, input.hostPlant);
 
       final format = _formatOf(settings);
       final specimenIds = <int>[];

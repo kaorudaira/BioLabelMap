@@ -17,10 +17,12 @@ import '../../domain/sampling_method.dart';
 import '../../domain/status.dart';
 import '../../services/record_service.dart';
 import '../../services/service_providers.dart';
+import '../../domain/dictionary.dart';
 import 'form_block.dart';
 import 'macron_buttons.dart';
 import 'position_picker_screen.dart';
 import 'romaji_candidate.dart';
+import 'text_suggestions.dart';
 import 'record_form.dart';
 
 /// 記録画面を開くときの引数。go_router の `extra` で渡す。
@@ -465,8 +467,10 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
       title: '環境・寄主植物',
       children: [
         _textField(_habitat, '環境', hint: '例: ブナ林の林縁'),
+        _suggestions(_habitat, DictTextKind.habitat),
         const SizedBox(height: 8),
         _textField(_hostPlant, '寄主植物', hint: '例: スゲ属'),
+        _suggestions(_hostPlant, DictTextKind.hostPlant),
       ],
     );
   }
@@ -530,6 +534,15 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
         Expanded(child: Text(value, style: TextStyle(fontSize: 16, color: color))),
       ],
     ),
+  );
+
+  /// 入力中の文字に合う、辞書の候補(F-10)。
+  Widget _suggestions(TextEditingController c, DictTextKind kind) => TextSuggestions(
+    controller: c,
+    fetch: (q) => ref.read(dictionaryServiceProvider).suggestText(kind, q),
+    onPicked: () {
+      if (!_dirty) setState(() => _dirty = true);
+    },
   );
 
   Widget _textField(TextEditingController c, String label, {String? hint, int maxLines = 1}) => TextField(
