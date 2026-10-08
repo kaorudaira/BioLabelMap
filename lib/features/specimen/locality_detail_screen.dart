@@ -8,8 +8,8 @@ import '../../domain/models/collection_period.dart';
 import '../../domain/specimen_list.dart';
 import '../../domain/status.dart';
 import '../../services/service_providers.dart';
-import '../record/record_form.dart';
 import '../record/record_screen.dart';
+import 'add_at_locality.dart';
 import 'specimen_selection.dart';
 
 /// 地点詳細(要件定義 S-03)。ピンをタップして開く。「どの虫を、いつ採ったか」が上から読める順に並べる。
@@ -51,10 +51,7 @@ class _LocalityDetailScreenState extends ConsumerState<LocalityDetailScreen> {
     }
 
     // 同じ場所(緯度経度の判定キーが同じ)の標本をすべて出す。地名の修正で地点を複製しても、1つにまとまる
-    final here = [
-      for (final i in items.value ?? const <SpecimenListItem>[])
-        if (i.latE4 == l.latE4 && i.lonE4 == l.lonE4) i,
-    ];
+    final here = specimensAtLocality(items.value ?? const <SpecimenListItem>[], l);
     final groups = arrangeSpecimens(here, sort: _sort);
     final span = periodSpanOf(here);
     final placeJa = formatPlaceJa(
@@ -154,21 +151,8 @@ class _LocalityDetailScreenState extends ConsumerState<LocalityDetailScreen> {
 
   /// 地点・日時・採集方法をコピーして、記録画面を開く。標本が無い地点は、地点だけを使う。
   Future<void> _addHere(Locality l, List<SpecimenListItem> here) async {
-    RecordForm form;
-    if (here.isEmpty) {
-      form = RecordForm.at(
-        latitude: l.latitude,
-        longitude: l.longitude,
-        existingLocalityId: l.id,
-      );
-    } else {
-      // いちばん新しい採集(採集日が新しく、同じなら標本番号が大きいもの)をコピーする
-      final latest = arrangeSpecimens(here).first.items.last;
-      final detail = await ref.read(specimenServiceProvider).detail(latest.id);
-      if (detail == null || !mounted) return;
-      form = RecordForm.fromEvent(detail.event, detail.locality);
-    }
-    if (mounted) context.push('/record', extra: RecordArgs(form));
+    final form = await recordFormForLocality(ref.read(specimenServiceProvider), l, here);
+    if (form != null && mounted) context.push('/record', extra: RecordArgs(form));
   }
 }
 

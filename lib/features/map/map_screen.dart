@@ -16,7 +16,9 @@ import '../../core/location/location_service.dart';
 import '../../services/map_query_service.dart';
 import '../../services/service_providers.dart';
 import '../record/record_form.dart';
+import '../specimen/add_at_locality.dart';
 import 'offline_tile_layer.dart';
+import 'pin_callout.dart';
 import 'place_search_sheet.dart';
 import '../record/record_screen.dart';
 
@@ -50,6 +52,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// 地図の長押しで立てた仮ピン。
   LatLng? _tempPin;
 
+  /// タップして選んだ過去の地点のピン。吹き出しと、記録ボタンの上のウィンドウを出す。
+  int? _selectedPinId;
+
   /// 最初の測位で、現在地に地図を移したか。
   var _centered = false;
 
@@ -76,6 +81,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final position = ref.watch(positionProvider);
     final pins = ref.watch(localityPinsProvider).value ?? const <LocalityPin>[];
     final current = position.value;
+    // 選んだピンが、標本の削除などで無くなったら、選びを外す
+    final selectedPin = pins.where((p) => p.localityId == _selectedPinId).firstOrNull;
 
     return Scaffold(
       body: Stack(
@@ -98,8 +105,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 // 回転の有無が変わったときだけ描き直す(「北に戻す」ボタンの出し入れ)
                 if (camera.rotation != _rotation) setState(() => _rotation = camera.rotation);
               },
-              onLongPress: (_, point) => setState(() => _tempPin = point),
-              onTap: (_, _) => setState(() => _tempPin = null),
+              onLongPress: (_, point) => setState(() {
+                _tempPin = point;
+                _selectedPinId = null;
+              }),
+              onTap: (_, _) => setState(() {
+                _tempPin = null;
+                _selectedPinId = null;
+              }),
             ),
             children: [
               GsiTileLayerWidget(layer: _layer),
@@ -133,6 +146,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       height: 40,
                       child: _PinMarker(pin: pin, onTap: () => _showPin(pin)),
                     ),
+                  if (selectedPin != null)
+                    // 吹き出しは、ピンの上(ピンの先端が、座標の位置)
+                    Marker(
+                      point: LatLng(selectedPin.latitude, selectedPin.longitude),
+                      width: PinBubble.width,
+                      height: 190,
+                      alignment: Alignment.topCenter,
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 22),
+                          child: PinBubble(localityId: selectedPin.localityId),
+                        ),
+                      ),
+                    ),
                   if (_tempPin case final p?)
                     Marker(
                       point: p,
@@ -148,7 +176,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           // 画面中央の十字。「記録」ボタンは、追従を外しているとき、この中央の位置で記録する
           const IgnorePointer(child: Center(child: _Crosshair())),
           SafeArea(child: _topBar(position)),
-          Positioned(left: 0, right: 0, bottom: 0, child: SafeArea(child: _bottomBar(current))),
+          Positioned(left: 0, right: 0, bottom: 0, child: SafeArea(child: _bottomBar(current, selectedPin))),
         ],
       ),
     );
@@ -315,10 +343,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   // ---- 下部: メニュー、記録ボタン、現在地に戻る、出典 ----
 
-  Widget _bottomBar(Position? current) {
+  Widget _bottomBar(Position? current, LocalityPin? selectedPin) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // ピンをタップしたときのウィンドウ(記録ボタンの上)
+        if (selectedPin != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: PinActionCard(
+              onAdd: () => _addToPin(selectedPin),
+              onOpenDetail: () => context.push('/localities/${selectedPin.localityId}'),
+              onClose: () => setState(() => _selectedPinId = null),
+            ),
+          ),
         if (_tempPin case final p?)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -501,8 +539,28 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     context.push('/record', extra: RecordArgs(form));
   }
 
-  /// ピンをタップしたとき。その地点の標本を一覧する地点詳細(S-03)を開く。
-  void _showPin(LocalityPin pin) => context.push('/localities/${pin.localityId}');
+  /// ピンをタップしたとき。ピンの上に吹き出し(和名と住所)を出し、記録ボタンの上に
+  /// 「この地点で追加」と「詳細をひらく」のウィンドウを出す。
+  void _showPin(LocalityPin pin) => setState(() {
+    _selectedPinId = pin.localityId;
+    _tempPin = null;
+  });
+
+  /// 「この地点で追加」。その地点でいちばん新しい採集の日時・採集方法・環境をコピーして、記録画面を開く。
+  Future<void> _addToPin(LocalityPin pin) async {
+    final locality = await ref.read(localityProvider(pin.localityId).future);
+    final items = await ref.read(specimenItemsProvider.future);
+    if (locality == null || !mounted) return;
+    final form = await recordFormForLocality(
+      ref.read(specimenServiceProvider),
+      locality,
+      specimensAtLocality(items, locality),
+    );
+    if (form != null && mounted) {
+      setState(() => _selectedPinId = null);
+      context.push('/record', extra: RecordArgs(form));
+    }
+  }
 
   static String _formatTime(DateTime t) =>
       '${t.month}/${t.day} ${t.hour}:${t.minute.toString().padLeft(2, '0')}';
