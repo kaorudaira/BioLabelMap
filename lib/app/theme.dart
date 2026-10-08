@@ -40,3 +40,9 @@ ThemeData buildTheme() {
     ),
   );
 }
+
+/// 同定済みの印(和名の左のチェックマーク)の色。
+const verifiedColor = Color(0xFF2E7D32);
+
+/// 仮同定の印(和名の左の、三角の中のビックリマーク)の色。
+const provisionalColor = Color(0xFFF57C00);

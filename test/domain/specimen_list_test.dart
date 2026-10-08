@@ -73,6 +73,15 @@ void main() {
       expect(groups.map((g) => g.count), [3, 1, 1, 1, 1]);
     });
 
+    test('同じ種でも、同定の状態(仮同定・同定済み)が違えば別の行になる', () {
+      final groups = groupSpecimens([
+        item(1, species: carabus, status: IdentificationStatus.provisional),
+        item(2, species: carabus, status: IdentificationStatus.verified),
+        item(3, species: carabus, status: IdentificationStatus.verified),
+      ]);
+      expect(groups.map((g) => g.count), [1, 2]);
+    });
+
     test('「その他」は、自由入力の名前が違えば別の行になる', () {
       final groups = groupSpecimens([
         item(1, method: SamplingMethod.other, methodLabel: '灯火'),

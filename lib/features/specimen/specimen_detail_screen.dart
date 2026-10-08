@@ -13,6 +13,7 @@ import '../identification/identify_screen.dart';
 import '../record/form_block.dart';
 import '../record/record_form.dart';
 import '../record/record_screen.dart';
+import 'status_mark.dart';
 
 /// 標本詳細(要件定義 S-05)。「この虫が何で、いつ、どこで採れたか」が上から読める順に並べる。
 class SpecimenDetailScreen extends ConsumerWidget {
@@ -63,6 +64,7 @@ class SpecimenDetailScreen extends ConsumerWidget {
   Widget _identification(BuildContext context, SpecimenDetail d) {
     final latest = d.latest;
     final name = speciesNameOf(latest);
+    final status = latest?.status ?? IdentificationStatus.unidentified;
     return FormBlock(
       color: BlockColors.identification,
       title: '同定(最新)',
@@ -78,8 +80,8 @@ class SpecimenDetailScreen extends ConsumerWidget {
         if (latest == null || name.isEmpty)
           const _Field('種名', '未同定')
         else ...[
-          _Field('和名', name.vernacular),
-          _Field('学名', name.scientific, italic: true),
+          _Field('和名', name.vernacular, mark: status),
+          _Field('学名', name.scientific, italic: true, mark: name.vernacular == null ? status : null),
           _Field('命名者・年', name.authorship),
           _Field('同定者', latest.identifiedBy),
           _Field('同定日', latest.dateIdentified?.toIso()),
@@ -160,12 +162,20 @@ class SpecimenDetailScreen extends ConsumerWidget {
         for (final i in d.history)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Text(
-              [
-                i.dateIdentified?.toIso() ?? _dateOnly(i.createdAt),
-                i.identifiedBy,
-                speciesNameOf(i).label,
-              ].whereType<String>().where((e) => e.isNotEmpty).join('  '),
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    [
+                      i.dateIdentified?.toIso() ?? _dateOnly(i.createdAt),
+                      i.identifiedBy,
+                    ].whereType<String>().where((e) => e.isNotEmpty).join('  '),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                StatusMark(i.status, size: 18),
+                Flexible(flex: 2, child: Text(speciesNameOf(i).label)),
+              ],
             ),
           ),
       ],
@@ -188,11 +198,14 @@ class SpecimenDetailScreen extends ConsumerWidget {
 
 /// 「項目名: 値」の1行。値が無い項目は出さない。
 class _Field extends StatelessWidget {
-  const _Field(this.label, this.value, {this.italic = false});
+  const _Field(this.label, this.value, {this.italic = false, this.mark}); 
 
   final String label;
   final String? value;
   final bool italic;
+
+  /// 同定の状態の印を、値の左に付ける。
+  final IdentificationStatus? mark;
 
   @override
   Widget build(BuildContext context) {
@@ -207,6 +220,7 @@ class _Field extends StatelessWidget {
             width: 96,
             child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
+          if (mark != null) StatusMark(mark!),
           Expanded(
             child: Text(
               v,
