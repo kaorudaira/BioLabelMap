@@ -49,6 +49,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// 最初の測位で、現在地に地図を移したか。
   var _centered = false;
 
+  /// 現在地に地図が追従しているか。追従中は、現在地(精度つき)で記録する。
+  /// 地図を指で動かすと外れ、十字の中央(手動の位置)で記録する。
+  var _following = true;
+
   static const _japan = LatLng(36.2, 138.25);
 
   @override
@@ -56,9 +60,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     // 最初に位置が取れたら、現在地に地図を移す
     ref.listen(positionProvider, (previous, next) {
       final p = next.value;
-      if (!_centered && p != null) {
+      if (p == null) return;
+      if (!_centered) {
         _centered = true;
         _map.move(LatLng(p.latitude, p.longitude), 15);
+      } else if (_following) {
+        _map.move(LatLng(p.latitude, p.longitude), _map.camera.zoom);
       }
     });
 
@@ -80,7 +87,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ? InteractiveFlag.all
                     : InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
-              onPositionChanged: (camera, _) {
+              onPositionChanged: (camera, hasGesture) {
+                // 指で動かしたら、現在地への追従を外す
+                if (hasGesture && _following) setState(() => _following = false);
                 // 回転の有無が変わったときだけ描き直す(「北に戻す」ボタンの出し入れ)
                 if (camera.rotation != _rotation) setState(() => _rotation = camera.rotation);
               },
@@ -131,6 +140,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ],
           ),
+          // 画面中央の十字。「記録」ボタンは、追従を外しているとき、この中央の位置で記録する
+          const IgnorePointer(child: Center(child: _Crosshair())),
           SafeArea(child: _topBar(position)),
           Positioned(left: 0, right: 0, bottom: 0, child: SafeArea(child: _bottomBar(current))),
         ],
@@ -332,7 +343,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 heroTag: 'locate',
                 onPressed: current == null
                     ? null
-                    : () => _map.move(LatLng(current.latitude, current.longitude), 16),
+                    : () {
+                        setState(() => _following = true);
+                        _map.move(LatLng(current.latitude, current.longitude), 16);
+                      },
                 child: const Icon(Icons.my_location),
               ),
             ],
@@ -386,8 +400,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (route != null && mounted) context.push(route);
   }
 
-  /// 「記録」ボタン。現在地で記録画面を開く。
+  /// 「記録」ボタン。現在地に追従しているときは現在地(精度つき)で、
+  /// 地図を動かしたあとは十字の中央(手動の位置)で、記録画面を開く。
   Future<void> _recordHere(Position? current) async {
+    if (!_following) {
+      final center = _map.camera.center;
+      _startRecord(center.latitude, center.longitude, accuracy: null, manual: true);
+      return;
+    }
     if (current == null) {
       // 位置が未確定のまま記録するときは、確認を出す(地図の中心で記録する)
       final center = _map.camera.center;
@@ -517,6 +537,24 @@ class _PinMarker extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 地図の中央の十字。白い縁を付けて、どの地図の上でも見えるようにする。
+class _Crosshair extends StatelessWidget {
+  const _Crosshair();
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(
+    width: 36,
+    height: 36,
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        Icon(Icons.add, size: 36, color: Colors.white),
+        Icon(Icons.add, size: 30, color: Colors.black87),
+      ],
+    ),
+  );
 }
 
 class _CurrentLocationDot extends StatelessWidget {
