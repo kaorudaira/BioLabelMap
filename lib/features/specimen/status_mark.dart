@@ -11,6 +11,11 @@ class StatusMark extends StatelessWidget {
   final IdentificationStatus status;
   final double size;
 
+  static const _gap = 4.0;
+
+  /// 印の幅(印と文字の間を含む)。印の無い行も、この幅を空けて文字の開始位置をそろえる。
+  static double slotWidth(double size) => size + _gap;
+
   @override
   Widget build(BuildContext context) {
     final (icon, color, label) = switch (status) {
@@ -18,9 +23,10 @@ class StatusMark extends StatelessWidget {
       IdentificationStatus.provisional => (Icons.warning_rounded, provisionalColor, '仮同定'),
       IdentificationStatus.unidentified => (null, null, null),
     };
-    if (icon == null) return const SizedBox.shrink();
+    // 印が無い状態(未同定)でも、同じ幅を空けて、他の項目と文字の開始位置をそろえる
+    if (icon == null) return SizedBox(width: slotWidth(size));
     return Padding(
-      padding: const EdgeInsets.only(right: 4),
+      padding: const EdgeInsets.only(right: _gap),
       child: Icon(icon, size: size, color: color, semanticLabel: label),
     );
   }

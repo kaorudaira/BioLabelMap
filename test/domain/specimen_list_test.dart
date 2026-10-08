@@ -34,6 +34,7 @@ SpecimenListItem item(
 );
 
 void main() {
+  _formatTests();
   _spanTests();
   final carabus = SpeciesName(vernacular: 'オサムシ', genus: 'Carabus', species: 'insulicola');
 
@@ -205,5 +206,25 @@ void _spanTests() {
     });
 
     test('標本が無ければ null', () => expect(periodSpanOf(const []), isNull));
+  });
+}
+
+void _formatTests() {
+  group('住所・座標・採集方法の表示', () {
+    test('ローマ字の住所は、県から順に並べる', () {
+      expect(
+        formatPlaceEn(prefecture: 'Niigata-ken', county: 'Minamiuonuma-gun', municipality: 'Yuzawa-machi', locality: 'Tsuchidaru'),
+        'Niigata-ken, Minamiuonuma-gun, Yuzawa-machi, Tsuchidaru',
+      );
+      expect(formatPlaceEn(prefecture: 'Niigata-ken', municipality: 'Uonuma-shi'), 'Niigata-ken, Uonuma-shi');
+      expect(formatPlaceEn(), '');
+    });
+
+    test('緯度経度に °N・°S、°E・°W をつける', () {
+      expect(formatLatLon(36.94471, 139.24258), '36.94471°N 139.24258°E');
+      expect(formatLatLon(-33.8688, 151.2093, digits: 4), '33.8688°S 151.2093°E');
+      expect(formatLatLon(40.7128, -74.006, digits: 3), '40.713°N 74.006°W');
+      expect(formatLatLon(0, 0, digits: 1), '0.0°N 0.0°E');
+    });
   });
 }

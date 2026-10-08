@@ -1,16 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../app/theme.dart';
 import '../../domain/models/calendar_date.dart';
 import '../../domain/models/collection_period.dart';
 import '../../domain/sampling_method.dart';
+import '../../domain/specimen_list.dart';
 import '../../domain/status.dart';
 import '../../services/service_providers.dart';
 import '../../services/specimen_edit_service.dart';
 import '../../services/specimen_service.dart';
 import '../record/form_block.dart';
 import '../record/macron_buttons.dart';
+import '../record/position_picker_screen.dart';
 
 /// 一括編集・編集を開くときの引数。go_router の `extra` で渡す。
 class BulkEditArgs {
@@ -57,6 +62,9 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
   };
 
   var _saving = false;
+
+  /// 地図で選び直した座標。1件の編集だけ。
+  LatLng? _newPosition;
 
   String? _initialPlace(PlaceField f) {
     final l = _initial?.locality;
@@ -121,6 +129,7 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
         for (final MapEntry(:key, :value) in _place.entries)
           if (_blankToNull(value.text) != _blankToNull(_initialPlace(key) ?? '')) key: _blankToNull(value.text),
       },
+      position: _newPosition == null ? null : (latitude: _newPosition!.latitude, longitude: _newPosition!.longitude),
     );
   }
 
@@ -130,9 +139,12 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
       Navigator.pop(context, false);
       return;
     }
+    if (!await _confirmOneLanguage(edit)) return;
     setState(() => _saving = true);
     try {
       await ref.read(specimenEditServiceProvider).apply(widget.args.specimenIds, edit);
+      // 座標を直したら、新しい座標の標高と地名を取り直す(通信できなければ、あとで自動で補完する)
+      if (edit.position != null) unawaited(ref.read(enrichmentSchedulerProvider).trigger());
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$_count件を修正しました')));
       Navigator.pop(context, true);
@@ -141,6 +153,39 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存できませんでした: $e')));
     }
+  }
+
+  /// 地名の和文と英文の片方だけを変えるときは、そのままでよいか確かめる。
+  Future<bool> _confirmOneLanguage(SpecimenEdit edit) async {
+    final ja = edit.place.keys.any((f) => f.name.endsWith('Ja'));
+    final en = edit.place.keys.any((f) => f.name.endsWith('En'));
+    if (ja == en) return true;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(ja ? '和文の地名だけを変更します' : '英文の地名だけを変更します'),
+        content: Text(
+          ja
+              ? '英文(ローマ字)の地名は変わりません。そのまま保存しますか。'
+              : '和文の地名は変わりません。そのまま保存しますか。',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('戻る')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('そのまま保存')),
+        ],
+      ),
+    );
+    return ok == true;
+  }
+
+  /// 座標を、地図の上で選び直す。いまの座標(直したあとなら、その座標)を開始地点にする。
+  Future<void> _pickPosition() async {
+    final l = _initial!.locality;
+    final start = _newPosition ?? LatLng(l.latitude, l.longitude);
+    final picked = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(builder: (_) => PositionPickerScreen(initial: start)),
+    );
+    if (picked != null && mounted) setState(() => _newPosition = picked);
   }
 
   Future<CalendarDate?> _pickDate(CalendarDate initial) async {
@@ -169,6 +214,7 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
           _methodBlock(),
           if (_single) _habitatBlock(),
           if (_single) _specimenBlock(),
+          if (_single) _positionBlock(),
           _placeBlock(),
         ],
       ),
@@ -283,6 +329,29 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
       _field(_remarks, 'メモ', maxLines: 3),
     ],
   );
+
+  Widget _positionBlock() {
+    final l = _initial!.locality;
+    final shown = _newPosition ?? LatLng(l.latitude, l.longitude);
+    return FormBlock(
+      color: BlockColors.location,
+      title: '座標',
+      children: [
+        Text(formatLatLon(shown.latitude, shown.longitude), style: Theme.of(context).textTheme.bodyLarge),
+        if (_newPosition != null)
+          Text(
+            '保存すると、標高と地名は新しい座標で取り直します(通信できないときは、あとで自動で補完します)',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _pickPosition,
+          icon: const Icon(Icons.pin_drop),
+          label: const Text('地図で座標を直す'),
+        ),
+      ],
+    );
+  }
 
   Widget _placeBlock() => FormBlock(
     color: BlockColors.location,

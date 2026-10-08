@@ -40,3 +40,10 @@ enum SamplingMethod {
   /// トラップ系は設置〜回収の期間を入力する。
   bool get usesPeriod => category == SamplingCategory.trap;
 }
+
+/// 採集方法の表示。「その他」を選び、自由入力があれば `その他：{自由入力}` の形にする。
+String formatSamplingMethod(SamplingMethod method, String? other) {
+  final text = other?.trim();
+  if (method == SamplingMethod.other && text != null && text.isNotEmpty) return 'その他：$text';
+  return method.nameJa;
+}

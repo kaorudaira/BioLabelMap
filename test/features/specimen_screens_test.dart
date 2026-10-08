@@ -123,6 +123,25 @@ void main() {
       expect(italic, isTrue);
     });
 
+    testWidgets('同定の印があってもなくても、和名・採集日・採集方法・件数は、和名と同じ位置から始まる', (tester) async {
+      final other = SpeciesName(vernacular: 'ヒメオサムシ', genus: 'Carabus', species: 'other');
+      await pumpList(tester, [
+        item(1, species: carabus, status: IdentificationStatus.verified),
+        item(2, species: other, status: IdentificationStatus.provisional),
+        item(3),
+      ]);
+      // 3行(同定済み・仮同定・未同定)の、すべての行で、左端がそろう
+      final names = ['オサムシ Carabus insulicola', 'ヒメオサムシ Carabus other', '未同定'];
+      final lefts = <double>[];
+      for (final n in names) {
+        lefts.add(tester.getTopLeft(find.text(n)).dx);
+      }
+      expect(lefts.toSet(), hasLength(1), reason: '和名の開始位置: $lefts');
+      final dateLefts = tester.widgetList(find.textContaining('2026/6/20')).map((w) => tester.getTopLeft(find.byWidget(w)).dx);
+      final methodLefts = tester.widgetList(find.text('スウィーピング')).map((w) => tester.getTopLeft(find.byWidget(w)).dx);
+      expect({...dateLefts, ...methodLefts, lefts.first}, hasLength(1));
+    });
+
     testWidgets('行と行の間に、区切りの線を入れる', (tester) async {
       final other = SpeciesName(vernacular: 'ヒメオサムシ', genus: 'Carabus', species: 'other');
       await pumpList(tester, [item(1, species: carabus), item(2, species: other), item(3)]);
@@ -251,6 +270,11 @@ void main() {
       expect(find.text('スウィーピング'), findsOneWidget);
       expect(find.text('新潟県魚沼市下折立'), findsOneWidget);
       expect(find.text('±8 m'), findsOneWidget);
+      expect(find.text('36.94471°N 139.24258°E'), findsOneWidget);
+      // 同定の印がある行も無い行も、値の開始位置はそろう
+      final left = tester.getTopLeft(find.text('オサムシ')).dx;
+      expect(tester.getTopLeft(find.text('Carabus insulicola')).dx, left);
+      expect(tester.getTopLeft(find.text('K. Yoshihara')).dx, left);
       expect(find.text('1390 m'), findsOneWidget);
       // 履歴は新しい順に、最新と古いものの両方が並ぶ
       expect(find.textContaining('Carabus old'), findsOneWidget);

@@ -56,10 +56,10 @@ enum LabelUnit {
 
 /// 並べ方(要件定義 第5章「印刷」)。
 enum LabelArrangement {
-  /// 標本ごとに並べる(取り違え防止)。データ・同定・コレクションのラベルが隣り合う。
+  /// 標本ごとに並べる(取り違え防止)。データ・コレクション・同定のラベルが隣り合う。
   bySpecimen,
 
-  /// 種類ごとにまとめる(データラベルをすべて、次に同定ラベルをすべて、次にコレクションラベルをすべて)。
+  /// 種類ごとにまとめる(データラベルをすべて、次にコレクションラベルをすべて、次に同定ラベルをすべて)。
   byKind,
 }
 
@@ -106,14 +106,14 @@ List<PlacedLabel> arrangeLabels(
     LabelArrangement.bySpecimen => [
       for (final s in specimens) ...[
         if (unit.hasData) PlacedLabel(LabelKind.data, s),
-        if (unit.hasIdentification && s.identificationLabel != null) PlacedLabel(LabelKind.identification, s),
         if (unit.hasCollection) PlacedLabel(LabelKind.collection, s),
+        if (unit.hasIdentification && s.identificationLabel != null) PlacedLabel(LabelKind.identification, s),
       ],
     ],
     LabelArrangement.byKind => [
       if (unit.hasData) ...of(LabelKind.data, specimens),
-      if (unit.hasIdentification) ...of(LabelKind.identification, identified),
       if (unit.hasCollection) ...of(LabelKind.collection, specimens),
+      if (unit.hasIdentification) ...of(LabelKind.identification, identified),
     ],
   };
 }

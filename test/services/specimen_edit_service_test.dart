@@ -154,6 +154,52 @@ void main() {
       expect((await detail(r.specimenIds.single)).locality.localityEn, isNull);
     });
 
+    test('座標を直すと、手動の座標になり、標高と地名は取り直しに回す', () async {
+      final r = await save(count: 2);
+      await edit.apply(r.specimenIds, const SpecimenEdit(position: (latitude: 36.5, longitude: 138.25)));
+
+      final l = (await detail(r.specimenIds.first)).locality;
+      expect(l.latitude, 36.5);
+      expect(l.longitude, 138.25);
+      expect((l.latE4, l.lonE4), (365000, 1382500));
+      expect(l.isManualPosition, isTrue);
+      expect(l.accuracyMeters, isNull);
+      expect(l.elevationMeters, isNull);
+      expect(l.elevationStatus, FetchStatus.pending);
+      expect(l.placeStatus, FetchStatus.pending);
+      expect([l.prefectureJa, l.municipalityJa, l.localityJa, l.localityEn, l.municipalityCode], everyElement(isNull));
+
+      final queue = await db.select(db.enrichmentQueue).get();
+      expect({for (final q in queue) q.kind}, {EnrichmentKind.elevation, EnrichmentKind.place});
+      expect(queue.every((q) => q.localityId == l.id), isTrue);
+    });
+
+    test('座標と地名をいっしょに直したら、その地名を残し、標高だけ取り直す', () async {
+      final r = await save();
+      await edit.apply(r.specimenIds, const SpecimenEdit(
+        position: (latitude: 36.5, longitude: 138.25),
+        place: {PlaceField.localityJa: '新しい大字'},
+      ));
+      final l = (await detail(r.specimenIds.single)).locality;
+      expect(l.localityJa, '新しい大字');
+      expect(l.municipalityJa, '魚沼市');
+      expect(l.placeStatus, FetchStatus.manual);
+      expect(l.elevationStatus, FetchStatus.pending);
+      final queue = await db.select(db.enrichmentQueue).get();
+      expect({for (final q in queue) q.kind}, {EnrichmentKind.elevation});
+    });
+
+    test('地点を共有する他の標本がある座標の修正は、地点を複製して付け替える', () async {
+      final a = await save(count: 2);
+      final b = await save(localityId: a.localityId);
+      await edit.apply([a.specimenIds.first], const SpecimenEdit(position: (latitude: 35.0, longitude: 139.0)));
+
+      expect((await detail(a.specimenIds.first)).locality.latitude, 35.0);
+      expect((await detail(a.specimenIds.last)).locality.latitude, closeTo(36.94471, 1e-9));
+      expect((await detail(b.specimenIds.single)).locality.latitude, closeTo(36.94471, 1e-9));
+      expect(await db.select(db.localities).get(), hasLength(2));
+    });
+
     test('何も変えない修正は、何もしない。標本を選ばないとエラー', () async {
       final r = await save();
       await edit.apply(r.specimenIds, const SpecimenEdit());

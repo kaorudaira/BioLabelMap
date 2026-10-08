@@ -262,3 +262,16 @@ CollectionPeriod? periodSpanOf(Iterable<SpecimenListItem> items) {
   }
   return start == null ? null : CollectionPeriod(start, end!);
 }
+
+/// ローマ字の住所。県から順に並べる(県, 郡, 市町村, 大字)。取得前の項目は飛ばす。
+String formatPlaceEn({String? prefecture, String? county, String? municipality, String? locality}) =>
+    [prefecture, county, municipality, locality]
+        .whereType<String>()
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .join(', ');
+
+/// 緯度経度の表示。北緯・南緯は °N・°S、東経・西経は °E・°W をつける(例:`36.94471°N 139.24258°E`)。
+String formatLatLon(double latitude, double longitude, {int digits = 5}) =>
+    '${latitude.abs().toStringAsFixed(digits)}°${latitude < 0 ? 'S' : 'N'} '
+    '${longitude.abs().toStringAsFixed(digits)}°${longitude < 0 ? 'W' : 'E'}';

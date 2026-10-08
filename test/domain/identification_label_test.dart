@@ -184,19 +184,19 @@ void main() {
       expect(arrangeLabels(specimens, LabelArrangement.bySpecimen).length, 6);
     });
 
-    test('3種すべて・標本ごと:データ、同定、コレクションの順。未同定の標本には同定ラベルが無い', () {
+    test('3種すべて・標本ごと:データ、コレクション、同定の順。未同定の標本には同定ラベルが無い', () {
       expect(run(LabelArrangement.bySpecimen, LabelUnit.all), [
-        'dK1', 'iK1', 'cK1', //
+        'dK1', 'cK1', 'iK1', //
         'dK2', 'cK2',
-        'dK3', 'iK3', 'cK3',
+        'dK3', 'cK3', 'iK3',
       ]);
     });
 
-    test('3種すべて・種類ごと:データ、同定、コレクションの順にまとめる', () {
+    test('3種すべて・種類ごと:データ、コレクション、同定の順にまとめる', () {
       expect(run(LabelArrangement.byKind, LabelUnit.all), [
         'dK1', 'dK2', 'dK3', //
-        'iK1', 'iK3',
         'cK1', 'cK2', 'cK3',
+        'iK1', 'iK3',
       ]);
     });
 
