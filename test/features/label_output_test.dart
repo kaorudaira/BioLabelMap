@@ -7,14 +7,17 @@ import 'package:biolabelmap/core/label/label_pdf.dart';
 import 'package:biolabelmap/domain/elevation_rounding.dart';
 import 'package:biolabelmap/domain/label/data_label_builder.dart';
 import 'package:biolabelmap/domain/label/data_label_layout.dart';
+import 'package:biolabelmap/domain/label/identification_label.dart';
 import 'package:biolabelmap/domain/label/label_sheet.dart';
 import 'package:biolabelmap/domain/models/calendar_date.dart';
 import 'package:biolabelmap/domain/models/collection_period.dart';
 import 'package:biolabelmap/domain/models/place_info.dart';
 import 'package:biolabelmap/domain/sampling_method.dart';
+import 'package:biolabelmap/domain/status.dart';
 import 'package:biolabelmap/services/label_service.dart';
 import 'package:biolabelmap/services/record_service.dart';
 import 'package:biolabelmap/services/settings_service.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -23,6 +26,7 @@ ByteData _font(String name) => ByteData.sublistView(File('assets/fonts/$name').r
 void main() {
   final fonts = LabelFonts(
     latin: _font('FiraSansCondensed-Regular.ttf'),
+    latinItalic: _font('FiraSansCondensed-Italic.ttf'),
     japanese: _font('BIZUDPGothic-Regular.ttf'),
   );
 
@@ -147,6 +151,66 @@ void main() {
       expect(RegExp(r'/Type\s*/Page[^s]').allMatches(body), hasLength(1));
       // 和文は使った文字だけを埋め込むので、フォント全体(4.5MB)より十分小さい
       expect(pdf.length, lessThan(1024 * 1024));
+    });
+
+    test('候補は最新の同定を持ち、未同定の標本は同定ラベルの材料が無い', () async {
+      final before = await labels.watchCandidates().first;
+      expect(before.every((c) => c.identificationSource == null), isTrue);
+
+      final id = before.first.specimen.id;
+      for (final species in ['old', 'sericea']) {
+        await db.into(db.identifications).insert(
+          IdentificationsCompanion.insert(
+            specimenId: id,
+            status: IdentificationStatus.provisional,
+            vernacularName: const Value('スゲハムシ'),
+            genus: const Value('Plateumaris'),
+            species: Value(species),
+            authorship: const Value('(Linnaeus 1761)'),
+            identifiedBy: const Value('K. Yoshihara'),
+          ),
+        );
+      }
+      final after = await labels.watchCandidates().first;
+      final source = after.first.identificationSource!;
+      expect(source.name.scientific, 'Plateumaris sericea');
+      expect(source.identifiedBy, 'K. Yoshihara');
+      expect(after.skip(1).every((c) => c.identificationSource == null), isTrue);
+    });
+
+    test('同定ラベルを含めて、3種すべてのPDFを作れる', () async {
+      final id = (await labels.watchCandidates().first).first.specimen.id;
+      await db.into(db.identifications).insert(
+        IdentificationsCompanion.insert(
+          specimenId: id,
+          status: IdentificationStatus.verified,
+          vernacularName: const Value('スゲハムシ'),
+          genus: const Value('Plateumaris'),
+          species: const Value('sericea'),
+          authorship: const Value('(Linnaeus 1761)'),
+          identifiedBy: const Value('K. Yoshihara'),
+        ),
+      );
+      final candidates = await labels.watchCandidates().first;
+      final specimens = [
+        for (final c in candidates)
+          SpecimenLabels(
+            specimenId: c.specimen.id,
+            catalogText: c.specimen.catalogText,
+            dataLabel: layoutDataLabel(buildDataLabel(c.toSource(ElevationRounding.tenMeters)), measurer: fonts.measurer),
+            identificationLabel: switch (c.identificationSource) {
+              final s? => layoutIdentificationLabel(s, measurer: fonts.measurer),
+              null => null,
+            },
+          ),
+      ];
+      final placed = arrangeLabels(specimens, LabelArrangement.bySpecimen, unit: LabelUnit.all);
+      // 3標本のデータ・コレクションと、同定した1標本の同定ラベル
+      expect(placed, hasLength(7));
+      final pdf = await buildLabelPdf(labels: placed, fonts: fonts);
+      expect(String.fromCharCodes(pdf.take(5)), '%PDF-');
+      // イタリック体のフォントも埋め込む
+      expect(latin1.decode(pdf, allowInvalid: true), contains('FiraSansCondensed-Italic'));
     });
 
     test('印刷済みにすると、印字した標高と地名を残す', () async {
