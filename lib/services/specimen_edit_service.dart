@@ -2,10 +2,14 @@ import 'package:drift/drift.dart';
 
 import '../core/db/database.dart';
 import '../domain/locality_key.dart';
+import '../domain/models/calendar_date.dart';
 import '../domain/models/collection_period.dart';
 import '../domain/sampling_method.dart';
+import '../domain/species_name.dart';
 import '../domain/status.dart';
 import '../domain/trash.dart';
+import 'dictionary_service.dart';
+import 'identification_service.dart';
 
 /// 座標の修正が地点に及ぼす影響。
 enum _PositionEffect {
@@ -41,6 +45,16 @@ enum PlaceField {
   final String label;
 }
 
+/// 追加する同定(要件定義 S-04「一括編集」・S-05「編集」)。種名が空のときは、追加しない。
+class IdentificationEdit {
+  const IdentificationEdit({required this.name, this.identifiedBy, this.dateIdentified, required this.status});
+
+  final SpeciesName name;
+  final String? identifiedBy;
+  final CalendarDate? dateIdentified;
+  final IdentificationStatus status;
+}
+
 /// 標本の修正内容(要件定義 S-04「一括編集」・S-05「編集」)。null の項目は変えない。
 class SpecimenEdit {
   const SpecimenEdit({
@@ -55,6 +69,7 @@ class SpecimenEdit {
     this.remarks,
     this.place = const {},
     this.position,
+    this.identification,
   });
 
   // 採集に属する項目(同じ採集を共有する標本は、いっしょに変わる。一部だけ直すときは採集を複製する)
@@ -76,6 +91,9 @@ class SpecimenEdit {
   /// 座標。直すと、標高と地名は取り直す(補完待ちに入れる)。地名も同時に直したときは、その地名を残す。
   final ({double latitude, double longitude})? position;
 
+  /// 同定の追加。選んだ標本すべてに、同定を1件ずつ追加する(上書きせず、履歴に積む)。
+  final IdentificationEdit? identification;
+
   bool get changesEvent =>
       period != null ||
       method != null ||
@@ -87,7 +105,7 @@ class SpecimenEdit {
 
   bool get changesSpecimen => sex != null || remarks != null;
 
-  bool get isEmpty => !changesEvent && !changesSpecimen && place.isEmpty && position == null;
+  bool get isEmpty => !changesEvent && !changesSpecimen && place.isEmpty && position == null && identification == null;
 }
 
 /// 修正・ごみ箱・完全な削除(要件定義 S-04・S-05・第12章)。
@@ -124,6 +142,16 @@ class SpecimenEditService {
             sex: edit.sex == null ? const Value.absent() : Value(edit.sex!.value),
             remarks: edit.remarks == null ? const Value.absent() : Value(_clean(edit.remarks!.value)),
           ),
+        );
+      }
+      // 同定の追加も、同じトランザクションで書く(地名や採集方法の修正と、いっしょに成功するか、いっしょに取り消す)
+      if (edit.identification case final i?) {
+        await IdentificationService(_db, DictionaryService(_db)).add(
+          ids,
+          name: i.name,
+          identifiedBy: i.identifiedBy,
+          dateIdentified: i.dateIdentified,
+          status: i.status,
         );
       }
       if (!edit.changesEvent && edit.place.isEmpty && edit.position == null) return;

@@ -11,10 +11,12 @@ import '../../domain/models/calendar_date.dart';
 import '../../domain/models/collection_period.dart';
 import '../../domain/sampling_method.dart';
 import '../../domain/specimen_list.dart';
+import '../../domain/species_name.dart';
 import '../../domain/status.dart';
 import '../../services/service_providers.dart';
 import '../../services/specimen_edit_service.dart';
 import '../../services/specimen_service.dart';
+import '../identification/identification_input.dart';
 import '../record/form_block.dart';
 import '../record/macron_buttons.dart';
 import '../record/position_picker_screen.dart';
@@ -59,6 +61,16 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
   late CalendarDate _end = _initial?.event.endDate ?? _start;
   late bool _isPeriod = _initial != null && _initial!.event.startDate != _initial!.event.endDate;
 
+  /// 同定の入力。1件の編集では、いまの(最新の)同定が入っている。
+  late final _ident = IdentificationInput(
+    initial: _initialName.isEmpty ? null : _initialName,
+    confirmed: _initialStatus == IdentificationStatus.verified,
+  );
+
+  SpeciesName get _initialName => speciesNameOf(_initial?.latest);
+
+  IdentificationStatus get _initialStatus => _initial?.latest?.status ?? IdentificationStatus.unidentified;
+
   late final Map<PlaceField, TextEditingController> _place = {
     for (final f in PlaceField.values) f: TextEditingController(text: _initialPlace(f)),
   };
@@ -90,6 +102,7 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
 
   @override
   void dispose() {
+    _ident.dispose();
     for (final c in [_methodOther, _lightSource, _bait, _habitat, _hostPlant, _remarks, ..._place.values]) {
       c.dispose();
     }
@@ -97,6 +110,21 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
   }
 
   static String? _blankToNull(String s) => s.trim().isEmpty ? null : s.trim();
+
+  /// 追加する同定。種名が空なら、追加しない(「未同定に戻す」は、ここでは扱わない)。
+  /// 1件の編集では、種名か状態を変えたときだけ追加する(同定者や同定日だけを変えても、追加しない)。
+  /// 同定は上書きせず、履歴に積む(要件定義 F-11)。
+  IdentificationEdit? _identificationEdit() {
+    final name = _ident.name;
+    if (name.isEmpty) return null;
+    if (_single && name == _initialName && _ident.status == _initialStatus) return null;
+    return IdentificationEdit(
+      name: name,
+      identifiedBy: _ident.identifier.text,
+      dateIdentified: _ident.date,
+      status: _ident.status,
+    );
+  }
 
   /// 画面の入力から、修正内容を作る。1件の編集では、変えた項目だけを入れる
   /// (変えていないのに採集を複製しないため)。一括編集では、空欄は変えない。
@@ -110,6 +138,7 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
           for (final MapEntry(:key, :value) in _place.entries)
             if (value.text.trim().isNotEmpty) key: value.text.trim(),
         },
+        identification: _identificationEdit(),
       );
     }
 
@@ -137,6 +166,7 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
           if (_blankToNull(value.text) != _blankToNull(_initialPlace(key) ?? '')) key: _blankToNull(value.text),
       },
       position: _newPosition == null ? null : (latitude: _newPosition!.latitude, longitude: _newPosition!.longitude),
+      identification: _identificationEdit(),
     );
   }
 
@@ -230,6 +260,7 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
           if (_single) _specimenBlock(),
           if (_single) _positionBlock(),
           _placeBlock(),
+          _identificationBlock(),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -369,6 +400,36 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
       _field(_remarks, 'メモ', maxLines: 3),
     ],
   );
+
+  /// 同定の追加(任意)。種名を入れたときだけ、選んだ標本に同定を追加する。
+  Widget _identificationBlock() {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
+          child: Text(
+            '同定を追加(任意)',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: BlockColors.identification,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          child: Text(
+            _single
+                ? 'いまの同定が入っています。種名か状態を変えたときだけ、新しい同定を履歴に追加します(上書きしません)。'
+                : '種名を入れたときだけ、選んだ$_count件すべてに、同じ同定を追加します(履歴に残り、上書きしません)。',
+            style: theme.textTheme.bodySmall,
+          ),
+        ),
+        IdentificationInputSection(input: _ident),
+      ],
+    );
+  }
 
   Widget _positionBlock() {
     final l = _initial!.locality;
