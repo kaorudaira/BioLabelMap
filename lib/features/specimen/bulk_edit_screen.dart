@@ -65,11 +65,22 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
   late final _ident = IdentificationInput(
     initial: _initialName.isEmpty ? null : _initialName,
     confirmed: _initialStatus == IdentificationStatus.verified,
+    initialIdentifier: _initial?.latest?.identifiedBy,
+    initialDate: _initial?.latest?.dateIdentified,
   );
+
+  /// 「未同定に戻す」を選んでいる。種名の欄は使わず、未同定の同定を履歴に追加する。
+  var _revertToUnidentified = false;
+
+  /// 未同定に戻せるのは、同定がある標本。一括編集では、いつでも選べる。
+  bool get _canRevert => !_single || _initialStatus != IdentificationStatus.unidentified || !_initialName.isEmpty;
 
   SpeciesName get _initialName => speciesNameOf(_initial?.latest);
 
   IdentificationStatus get _initialStatus => _initial?.latest?.status ?? IdentificationStatus.unidentified;
+
+  /// いまの同定の同定者(空白を除く。無ければ空)。
+  String get _initialIdentifier => (_initial?.latest?.identifiedBy ?? '').trim();
 
   late final Map<PlaceField, TextEditingController> _place = {
     for (final f in PlaceField.values) f: TextEditingController(text: _initialPlace(f)),
@@ -115,9 +126,23 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
   /// 1件の編集では、種名か状態を変えたときだけ追加する(同定者や同定日だけを変えても、追加しない)。
   /// 同定は上書きせず、履歴に積む(要件定義 F-11)。
   IdentificationEdit? _identificationEdit() {
+    if (_revertToUnidentified) {
+      // 未同定に戻す:種名の無い同定を、履歴に追加する(状態は未同定)
+      return IdentificationEdit(
+        name: SpeciesName.unidentified,
+        identifiedBy: _ident.identifier.text,
+        dateIdentified: _ident.date,
+        status: IdentificationStatus.unidentified,
+      );
+    }
     final name = _ident.name;
     if (name.isEmpty) return null;
-    if (_single && name == _initialName && _ident.status == _initialStatus) return null;
+    if (_single) {
+      // 同定者・同定日は、利用者が変えたときだけ、変更とみなす(既定の値を自動で入れただけでは、変更にしない)
+      final identifierChanged = _ident.identifierTouched && _ident.identifier.text.trim() != _initialIdentifier;
+      final dateChanged = _ident.dateTouched && _ident.date != _initial?.latest?.dateIdentified;
+      if (name == _initialName && _ident.status == _initialStatus && !identifierChanged && !dateChanged) return null;
+    }
     return IdentificationEdit(
       name: name,
       identifiedBy: _ident.identifier.text,
@@ -421,12 +446,29 @@ class _BulkEditScreenState extends ConsumerState<BulkEditScreen> {
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
           child: Text(
             _single
-                ? 'いまの同定が入っています。種名か状態を変えたときだけ、新しい同定を履歴に追加します(上書きしません)。'
+                ? 'いまの同定が入っています。種名・状態・同定者・同定日のどれかを変えたときだけ、新しい同定を履歴に追加します(上書きしません)。'
                 : '種名を入れたときだけ、選んだ$_count件すべてに、同じ同定を追加します(履歴に残り、上書きしません)。',
             style: theme.textTheme.bodySmall,
           ),
         ),
-        IdentificationInputSection(input: _ident),
+        if (_canRevert)
+          SwitchListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+            title: const Text('未同定に戻す'),
+            subtitle: const Text('種名の無い「未同定」の同定を、履歴に追加します(いまの同定は、履歴に残ります)'),
+            value: _revertToUnidentified,
+            onChanged: (v) => setState(() => _revertToUnidentified = v),
+          ),
+        if (_revertToUnidentified)
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Text(
+              _single ? 'この標本の同定を、未同定に戻します。' : '選んだ$_count件の同定を、未同定に戻します。',
+              style: theme.textTheme.bodyMedium?.copyWith(color: warningColor),
+            ),
+          )
+        else
+          IdentificationInputSection(input: _ident),
       ],
     );
   }

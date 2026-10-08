@@ -14,6 +14,7 @@ import 'package:biolabelmap/services/service_providers.dart';
 import 'package:biolabelmap/services/settings_service.dart';
 import 'package:biolabelmap/services/specimen_edit_service.dart';
 import 'package:biolabelmap/services/specimen_service.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -235,13 +236,148 @@ void main() {
       await pump(tester, targets: [ids[0]], single: true);
       expect(tester.widget<TextField>(field('属名')).controller!.text, 'Carabus');
       expect(tester.widget<TextField>(field('命名者・年')).controller!.text, 'Chaudoir, 1869');
-      expect(find.textContaining('種名か状態を変えたときだけ'), findsOneWidget);
+      expect(find.textContaining('種名・状態・同定者・同定日のどれかを変えたときだけ'), findsOneWidget);
 
-      // 同定者だけを変えても、追加しない
-      await tester.enterText(field('同定者'), 'someone');
+      // 何も変えずに、メモだけ直しても、同定は追加しない(同定者の欄に既定の名前が入っていても、変更とみなさない)
       await tester.enterText(field('メモ'), '朝霧');
       await save(tester, '保存');
       expect((await tester.runAsync(history))!, hasLength(1));
+    });
+
+    /// 同定者・同定日を指定して、同定を1件入れておく。
+    Future<void> identify(int id, {String? by, CalendarDate? on, IdentificationStatus status = IdentificationStatus.provisional}) =>
+        IdentificationService(db, DictionaryService(db)).add([id], name: carabus, identifiedBy: by, dateIdentified: on, status: status);
+
+    testWidgets('編集:同定者と同定日の欄には、いまの同定の値が入っている', (tester) async {
+      await seed(tester);
+      await tester.runAsync(() => identify(ids[0], by: 'K. Yoshihara', on: CalendarDate(2026, 7, 1)));
+      await pump(tester, targets: [ids[0]], single: true);
+      expect(tester.widget<TextField>(field('同定者')).controller!.text, 'K. Yoshihara');
+      expect(find.text('同定日 2026-07-01'), findsOneWidget);
+    });
+
+    testWidgets('編集:同定者を変えると、同じ種名でも、新しい同定を履歴に追加する', (tester) async {
+      await seed(tester);
+      await tester.runAsync(() => identify(ids[0], by: 'A', on: CalendarDate(2026, 7, 1)));
+      await pump(tester, targets: [ids[0]], single: true);
+      await tester.enterText(field('同定者'), 'B');
+      await save(tester, '保存');
+
+      final d = (await tester.runAsync(() => SpecimenService(db).detail(ids[0])))!;
+      expect(d.history.map((i) => i.identifiedBy), ['B', 'A']);
+      expect(d.latest!.species, 'insulicola');
+      expect(d.latest!.dateIdentified, CalendarDate(2026, 7, 1));
+    });
+
+    testWidgets('編集:同定日を変えると、新しい同定を履歴に追加する', (tester) async {
+      await seed(tester);
+      await tester.runAsync(() => identify(ids[0], by: 'A', on: CalendarDate(2026, 7, 1)));
+      await pump(tester, targets: [ids[0]], single: true);
+      await tester.ensureVisible(find.text('同定日 2026-07-01'));
+      await tester.pump();
+      await tester.tap(find.text('同定日 2026-07-01'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('15'));
+      await tester.pump();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(find.text('同定日 2026-07-15'), findsOneWidget);
+      await save(tester, '保存');
+
+      final d = (await tester.runAsync(() => SpecimenService(db).detail(ids[0])))!;
+      expect(d.history, hasLength(2));
+      expect(d.latest!.dateIdentified, CalendarDate(2026, 7, 15));
+      expect(d.latest!.identifiedBy, 'A');
+    });
+
+    testWidgets('編集:同定日や同定者を触っても、元の値に戻せば、追加しない', (tester) async {
+      await seed(tester);
+      await tester.runAsync(() => identify(ids[0], by: 'A', on: CalendarDate(2026, 7, 1)));
+      await pump(tester, targets: [ids[0]], single: true);
+      await tester.enterText(field('同定者'), 'B');
+      await tester.enterText(field('同定者'), 'A');
+      await tester.enterText(field('メモ'), 'x');
+      await save(tester, '保存');
+      expect((await tester.runAsync(history))!, hasLength(1));
+    });
+
+    testWidgets('編集:同定者が空の同定で、設定の既定の名前が入っていても、触らなければ追加しない', (tester) async {
+      await seed(tester);
+      await tester.runAsync(() async {
+        await identify(ids[0]);
+        await db.update(db.appSettings).write(const AppSettingsCompanion(lastIdentifier: Value('既定の人')));
+      });
+      await pump(tester, targets: [ids[0]], single: true);
+      expect(tester.widget<TextField>(field('同定者')).controller!.text, '既定の人');
+      await tester.enterText(field('メモ'), 'x');
+      await save(tester, '保存');
+      expect((await tester.runAsync(history))!, hasLength(1));
+    });
+
+    testWidgets('編集:「未同定に戻す」で、未同定の同定を履歴に追加する(いまの同定は履歴に残る)', (tester) async {
+      await seed(tester);
+      await tester.runAsync(() => identify(ids[0], by: 'A', status: IdentificationStatus.verified));
+      await pump(tester, targets: [ids[0]], single: true);
+      expect(find.text('未同定に戻す'), findsOneWidget);
+
+      await tester.tap(find.text('未同定に戻す'));
+      await tester.pump();
+      // 種名の欄は隠れ、戻すことを知らせる
+      expect(find.text('この標本の同定を、未同定に戻します。'), findsOneWidget);
+      expect(field('属名'), findsNothing);
+      await save(tester, '保存');
+
+      final d = (await tester.runAsync(() => SpecimenService(db).detail(ids[0])))!;
+      expect(d.history, hasLength(2));
+      expect(d.latest!.status, IdentificationStatus.unidentified);
+      expect(d.latest!.genus, isNull);
+      expect(d.latest!.vernacularName, isNull);
+      expect(d.history.last.status, IdentificationStatus.verified); // もとの同定は、そのまま
+      // 辞書は増えない
+      expect((await tester.runAsync(() => db.select(db.speciesDict).get()))!, hasLength(1));
+    });
+
+    testWidgets('編集:同定が無い標本には、「未同定に戻す」を出さない', (tester) async {
+      await seed(tester);
+      await pump(tester, targets: [ids[1]], single: true);
+      expect(find.text('未同定に戻す'), findsNothing);
+    });
+
+    testWidgets('編集:「未同定に戻す」を入れて切ると、入力欄が戻り、種名の入力も残っている', (tester) async {
+      await seed(tester);
+      await tester.runAsync(() => identify(ids[0]));
+      await pump(tester, targets: [ids[0]], single: true);
+      await tester.tap(find.text('未同定に戻す'));
+      await tester.pump();
+      await tester.tap(find.text('未同定に戻す'));
+      await tester.pump();
+      expect(field('属名'), findsOneWidget);
+      expect(tester.widget<TextField>(field('属名')).controller!.text, 'Carabus');
+    });
+
+    testWidgets('一括編集:「未同定に戻す」で、選んだ全標本に、未同定の同定を追加する', (tester) async {
+      await seed(tester);
+      await tester.runAsync(() => identify(ids[0]));
+      await pump(tester, targets: ids.sublist(0, 2));
+      expect(find.text('未同定に戻す'), findsOneWidget);
+      await tester.tap(find.text('未同定に戻す'));
+      await tester.pump();
+      expect(find.text('選んだ2件の同定を、未同定に戻します。'), findsOneWidget);
+      await save(tester, '2件に反映');
+
+      final rows = (await tester.runAsync(history))!;
+      final unidentified = rows.where((r) => r.status == IdentificationStatus.unidentified).toList();
+      expect(unidentified.map((r) => r.specimenId).toSet(), {ids[0], ids[1]});
+      expect(rows, hasLength(3)); // もとの1件+未同定の2件
+    });
+
+    testWidgets('一括編集:「未同定に戻す」を入れなければ、種名が空のとき、何も追加しない', (tester) async {
+      await seed(tester);
+      await pump(tester, targets: ids);
+      await tester.enterText(field('大字(和)'), 'x');
+      await tester.enterText(field('大字(ローマ字)'), 'y');
+      await save(tester, '3件に反映');
+      expect((await tester.runAsync(history))!, isEmpty);
     });
 
     testWidgets('編集:種名を変えると、新しい同定を履歴に追加する(上書きしない)', (tester) async {

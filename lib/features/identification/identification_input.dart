@@ -16,13 +16,19 @@ import '../specimen/species_name_text.dart';
 /// 同定の入力内容(種名・命名者・年・同定者・同定日・状態)。
 /// 同定入力(S-06)と、一括編集・編集(S-04・S-05)で共通に使う。
 class IdentificationInput extends ChangeNotifier {
-  IdentificationInput({SpeciesName? initial, this.confirmed = false})
-    : vernacular = TextEditingController(text: initial?.vernacular),
+  /// [initialIdentifier]・[initialDate] は、いまの同定の同定者・同定日(標本の編集で、いまの値を見せる)。
+  IdentificationInput({
+    SpeciesName? initial,
+    this.confirmed = false,
+    String? initialIdentifier,
+    CalendarDate? initialDate,
+  }) : vernacular = TextEditingController(text: initial?.vernacular),
       genus = TextEditingController(text: initial?.genus),
       species = TextEditingController(text: initial?.species),
       subspecies = TextEditingController(text: initial?.subspecies),
       authorship = TextEditingController(text: initial?.authorship),
-      identifier = TextEditingController() {
+      identifier = TextEditingController(text: initialIdentifier),
+      date = initialDate ?? CalendarDate.fromDateTime(DateTime.now()) {
     for (final c in controllers) {
       c.addListener(notifyListeners);
     }
@@ -38,7 +44,11 @@ class IdentificationInput extends ChangeNotifier {
   List<TextEditingController> get controllers => [vernacular, genus, species, subspecies, authorship, identifier];
 
   /// 同定日。既定は今日。
-  CalendarDate date = CalendarDate.fromDateTime(DateTime.now());
+  CalendarDate date;
+
+  /// 同定者・同定日を、利用者が変えた(既定の値を自動で入れたのではなく)。標本の編集で、変えたかを見分けるのに使う。
+  var identifierTouched = false;
+  var dateTouched = false;
 
   /// 「同定済み」を選んでいる(選んでいなければ、種名があれば仮同定)。
   bool confirmed;
@@ -58,6 +68,7 @@ class IdentificationInput extends ChangeNotifier {
 
   void setDate(CalendarDate d) {
     date = d;
+    dateTouched = true;
     notifyListeners();
   }
 
@@ -65,6 +76,8 @@ class IdentificationInput extends ChangeNotifier {
     confirmed = v;
     notifyListeners();
   }
+
+  void markIdentifierTouched() => identifierTouched = true;
 
   /// 種名の入力をすべて消して、最初からやり直す。自動入力の記憶も消す。同定者と同定日は残す。
   void clearName() {
@@ -348,7 +361,7 @@ class _IdentificationInputSectionState extends ConsumerState<IdentificationInput
           children: [
             _field(_Field.identifier, '同定者'),
             const SizedBox(height: 6),
-            MacronButtons(controller: _input.identifier, onInserted: () {}, personNames: true),
+            MacronButtons(controller: _input.identifier, onInserted: _input.markIdentifierTouched, personNames: true),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: _pickDate,
@@ -384,7 +397,9 @@ class _IdentificationInputSectionState extends ConsumerState<IdentificationInput
     decoration: withClear(
       InputDecoration(labelText: label, hintText: hint, border: const OutlineInputBorder(), isDense: true),
       _controllers[f]!,
+      onCleared: f == _Field.identifier ? _input.markIdentifierTouched : null,
     ),
+    onChanged: f == _Field.identifier ? (_) => _input.markIdentifierTouched() : null,
   );
 
   /// 候補の一覧。和名の50音順に最大20件を出し、5件ぶんの高さでスクロールする。
