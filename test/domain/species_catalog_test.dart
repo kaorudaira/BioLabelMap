@@ -21,6 +21,7 @@ const _csv = '''﻿和名,学名\r
 ''';
 
 void main() {
+  _fieldSearchTests();
   _compareTests();
   final catalog = SpeciesCatalog.parseCsv(_csv);
 
@@ -167,6 +168,47 @@ void _compareTests() {
         SpeciesName(vernacular: 'ア', genus: 'A', species: 'y'),
       ]..sort(compareByVernacular);
       expect(list.map((n) => n.genus), ['A', 'B']);
+    });
+  });
+}
+
+void _fieldSearchTests() {
+  group('欄ごとの検索', () {
+    final catalog = SpeciesCatalog.parseCsv(
+      '"ア","Carabus ignotus Bates, 1883"\n'
+      '"イ","Another carabus Bates, 1883"\n'
+      '"カラバス","Third species Bates, 1883"\n'
+      '"ウ　奄美亜種","Coraebus ignotus shibatai Kurosawa, 1963"',
+    );
+    List<String> genera(SpeciesNameQuery q) => catalog.searchFields(q, limit: null).map((e) => e.genus).toList();
+
+    test('属名は属名だけ、種小名は種小名だけ、亜種名は亜種名だけ、和名は和名だけを探す', () {
+      expect(genera(const SpeciesNameQuery(genus: 'carabus')), ['Carabus']);
+      expect(genera(const SpeciesNameQuery(species: 'carabus')), ['Another']);
+      expect(genera(const SpeciesNameQuery(subspecies: 'shiba')), ['Coraebus']);
+      expect(genera(const SpeciesNameQuery(vernacular: 'カラバス')), ['Third']);
+      expect(genera(const SpeciesNameQuery(vernacular: 'carabus')), isEmpty);
+    });
+
+    test('入力した欄は、すべて条件になる(別の欄に打った文字とも合うものだけ)', () {
+      expect(genera(const SpeciesNameQuery(genus: 'co', species: 'ignotus')), ['Coraebus']);
+      expect(genera(const SpeciesNameQuery(genus: 'car', species: 'ignotus')), ['Carabus']);
+      expect(genera(const SpeciesNameQuery(genus: 'zzz', species: 'ignotus')), isEmpty);
+    });
+
+    test('条件が空なら何も返さない。大文字小文字は区別せず、前後の空白は無視する', () {
+      expect(const SpeciesNameQuery().isEmpty, isTrue);
+      expect(const SpeciesNameQuery(genus: '  ').isEmpty, isTrue);
+      expect(catalog.searchFields(const SpeciesNameQuery()), isEmpty);
+      expect(genera(const SpeciesNameQuery(genus: ' CARABUS ')), ['Carabus']);
+    });
+
+    test('先頭が合うものを先に並べる', () {
+      final c = SpeciesCatalog.parseCsv(
+        '"ア","Xcarabus one Bates, 1883"\n'
+        '"イ","Carabus two Bates, 1883"',
+      );
+      expect(c.searchFields(const SpeciesNameQuery(genus: 'carabus'), limit: null).map((e) => e.genus), ['Carabus', 'Xcarabus']);
     });
   });
 }

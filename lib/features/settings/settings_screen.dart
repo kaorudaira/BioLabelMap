@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
+import '../common/clear_button.dart';import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -95,10 +96,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _collector,
-              decoration: const InputDecoration(
-                labelText: '採集者名(英語表記)',
-                hintText: 'Kaoru Yoshihara',
-                border: OutlineInputBorder(),
+              decoration: withClear(
+                const InputDecoration(
+                  labelText: '採集者名(英語表記)',
+                  hintText: 'Kaoru Yoshihara',
+                  border: OutlineInputBorder(),
+                ),
+                _collector,
+                onCleared: () => setState(() {}),
               ),
               textCapitalization: TextCapitalization.words,
               validator: (v) => (v ?? '').trim().isEmpty ? '採集者名を入力してください' : null,
@@ -118,7 +123,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   flex: 3,
                   child: TextFormField(
                     controller: _prefix,
-                    decoration: const InputDecoration(labelText: '接頭辞', border: OutlineInputBorder()),
+                    decoration: withClear(
+                      const InputDecoration(labelText: '接頭辞', border: OutlineInputBorder()),
+                      _prefix,
+                      onCleared: () => setState(() {}),
+                    ),
                     textCapitalization: TextCapitalization.characters,
                     // 空白は番号の文字列に混ぜない
                     inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'\s'))],
@@ -131,7 +140,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   flex: 2,
                   child: TextFormField(
                     controller: _digits,
-                    decoration: const InputDecoration(labelText: '桁数', border: OutlineInputBorder()),
+                    decoration: withClear(
+                      const InputDecoration(labelText: '桁数', border: OutlineInputBorder()),
+                      _digits,
+                      onCleared: () => setState(() {}),
+                    ),
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     validator: (v) {

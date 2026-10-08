@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../common/clear_button.dart';
 import '../../domain/models/calendar_date.dart';
 import '../../domain/sampling_method.dart';
 import '../../domain/specimen_list.dart';
@@ -46,7 +47,11 @@ class _FilterSheetState extends State<_FilterSheet> {
               const SizedBox(height: 12),
               TextField(
                 controller: _place,
-                decoration: const InputDecoration(labelText: '地名', border: OutlineInputBorder()),
+                decoration: withClear(
+                  const InputDecoration(labelText: '地名', border: OutlineInputBorder()),
+                  _place,
+                  onCleared: () => _filter = _filter.copyWith(place: ''),
+                ),
                 onChanged: (v) => _filter = _filter.copyWith(place: v),
               ),
               const SizedBox(height: 12),

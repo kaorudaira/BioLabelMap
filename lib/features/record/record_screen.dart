@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../common/clear_button.dart';import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -337,11 +338,15 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
           const SizedBox(height: 6),
           TextField(
             controller: _localityEn,
-            decoration: InputDecoration(
-              labelText: '大字のローマ字(${_form.place!.localityJa})',
-              hintText: '例: Shimooritate',
-              border: const OutlineInputBorder(),
-              isDense: true,
+            decoration: withClear(
+              InputDecoration(
+                labelText: '大字のローマ字(${_form.place!.localityJa})',
+                hintText: '例: Shimooritate',
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+              _localityEn,
+              onCleared: () => _edited(() => _form.place = _form.place!.withLocalityEn(null)),
             ),
             onChanged: (v) => _edited(() => _form.place = _form.place!.withLocalityEn(v.trim().isEmpty ? null : v.trim())),
           ),
@@ -529,6 +534,10 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
     ),
   );
 
+  void _markDirty() {
+    if (!_dirty) setState(() => _dirty = true);
+  }
+
   /// 入力中の文字に合う、辞書の候補(F-10)。
   Widget _suggestions(TextEditingController c, DictTextKind kind) => TextSuggestions(
     controller: c,
@@ -541,7 +550,11 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
   Widget _textField(TextEditingController c, String label, {String? hint, int maxLines = 1}) => TextField(
     controller: c,
     maxLines: maxLines,
-    decoration: InputDecoration(labelText: label, hintText: hint, border: const OutlineInputBorder(), isDense: true),
+    decoration: withClear(
+      InputDecoration(labelText: label, hintText: hint, border: const OutlineInputBorder(), isDense: true),
+      c,
+      onCleared: () => _markDirty(),
+    ),
     onChanged: (_) {
       if (!_dirty) setState(() => _dirty = true);
     },

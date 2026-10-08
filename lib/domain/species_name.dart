@@ -74,3 +74,37 @@ int compareByVernacular(SpeciesName a, SpeciesName b) {
 String _kanaKey(String s) => String.fromCharCodes([
   for (final c in s.runes) c >= 0x3041 && c <= 0x3096 ? c + 0x60 : c,
 ]);
+
+/// 種名の検索条件。入力した項目だけが条件になり、候補の同じ項目に含まれていなければならない
+/// (属名の欄に打った文字は属名だけを、種小名の欄に打った文字は種小名だけを探す)。
+/// 大文字小文字は区別しない。
+class SpeciesNameQuery {
+  const SpeciesNameQuery({this.vernacular = '', this.genus = '', this.species = '', this.subspecies = ''});
+
+  final String vernacular;
+  final String genus;
+  final String species;
+  final String subspecies;
+
+  bool get isEmpty =>
+      vernacular.trim().isEmpty && genus.trim().isEmpty && species.trim().isEmpty && subspecies.trim().isEmpty;
+
+  /// 条件の文字(空白を除いた小文字)が、候補の同じ項目に含まれているか。
+  bool matchesFields({String? vernacular, String? genus, String? species, String? subspecies}) =>
+      _has(vernacular, this.vernacular) &&
+      _has(genus, this.genus) &&
+      _has(species, this.species) &&
+      _has(subspecies, this.subspecies);
+
+  bool matches(SpeciesName n) => matchesFields(
+    vernacular: n.vernacular,
+    genus: n.genus,
+    species: n.species,
+    subspecies: n.subspecies,
+  );
+
+  static bool _has(String? field, String query) {
+    final q = query.trim().toLowerCase();
+    return q.isEmpty || (field ?? '').toLowerCase().contains(q);
+  }
+}

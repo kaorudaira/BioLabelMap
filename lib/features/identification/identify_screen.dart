@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../common/clear_button.dart';import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../domain/models/calendar_date.dart';
@@ -10,6 +11,7 @@ import '../../services/identification_service.dart';
 import '../../services/service_providers.dart';
 import '../record/form_block.dart';
 import '../record/macron_buttons.dart';
+import '../specimen/species_name_text.dart';
 
 /// 同定入力を開くときの引数。go_router の `extra` で渡す。
 class IdentifyArgs {
@@ -88,14 +90,16 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
     for (final MapEntry(:key, :value) in _controllers.entries) {
       value.addListener(() {
         if (!_picking && !_autofilling && _nameFields.contains(key)) {
-          // 候補は、属や種など入力済みの項目をすべて合わせた文字で引く
-          if (_focus[key]!.hasFocus) _refreshCandidates(_nameFields.map((f) => _controllers[f]!.text).join(' '));
+          // 候補は、入力した欄の文字を、その欄だけで探す(属名の欄なら属名、種小名の欄なら種小名)。
+          // 入力済みのほかの欄も、それぞれの欄の条件にする
+          if (_focus[key]!.hasFocus) _refreshCandidates();
           _autoFill();
         }
         setState(() {});
       });
       _focus[key]!.addListener(() {
-        if (_focus[key]!.hasFocus) setState(() => _active = key);
+        // 同定者の欄には、専用の特殊文字ボタンを置く(種名の下のボタンは、種名と命名者・年の欄に入れる)
+        if (_focus[key]!.hasFocus && key != _Field.identifier) setState(() => _active = key);
       });
     }
   }
@@ -125,16 +129,22 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
     if (mounted && _identifier.text.isEmpty) _identifier.text = settings.lastIdentifier ?? '';
   }
 
-  Future<void> _refreshCandidates(String query) async {
+  Future<void> _refreshCandidates() async {
     final generation = ++_generation;
-    final fromDictionary = await ref.read(dictionaryServiceProvider).suggestSpecies(query, limit: null);
+    final query = SpeciesNameQuery(
+      vernacular: _vernacular.text,
+      genus: _genus.text,
+      species: _species.text,
+      subspecies: _subspecies.text,
+    );
+    final fromDictionary = await ref.read(dictionaryServiceProvider).suggestSpeciesByFields(query, limit: null);
     if (!mounted || generation != _generation) return;
     // 自分で使った種(辞書)を先に、目録の種をその後ろに並べる。同じ種名は1つにまとめる
     final catalog = ref.read(speciesCatalogProvider).value ?? SpeciesCatalog.empty;
     final found = <String, _Candidate>{
       for (final n in fromDictionary) n.key: _Candidate(n, fromCatalog: false),
     };
-    for (final e in catalog.search(query, limit: null)) {
+    for (final e in catalog.searchFields(query, limit: null)) {
       final n = e.toSpeciesName();
       found.putIfAbsent(n.key, () => _Candidate(n, fromCatalog: true));
     }
@@ -264,13 +274,13 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: _field(_Field.genus, '属', hint: 'Carabus', italic: true)),
+                  Expanded(child: _field(_Field.genus, '属名', hint: 'Carabus', italic: true)),
                   const SizedBox(width: 8),
-                  Expanded(child: _field(_Field.species, '種', hint: 'insulicola', italic: true)),
+                  Expanded(child: _field(_Field.species, '種小名', hint: 'insulicola', italic: true)),
                 ],
               ),
               const SizedBox(height: 8),
-              _field(_Field.subspecies, '亜種', italic: true),
+              _field(_Field.subspecies, '亜種名', italic: true),
               if (_candidates.isNotEmpty) _candidateList(),
               const SizedBox(height: 8),
               _field(_Field.authorship, '命名者・年', hint: '例: (Linnaeus, 1758)'),
@@ -287,7 +297,7 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
                   ),
                 ),
               const SizedBox(height: 8),
-              MacronButtons(controller: _controllers[_active]!, onInserted: () {}),
+              MacronButtons(controller: _controllers[_active]!, onInserted: () {}, personNames: true),
             ],
           ),
           FormBlock(
@@ -295,6 +305,8 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
             title: '同定',
             children: [
               _field(_Field.identifier, '同定者'),
+              const SizedBox(height: 6),
+              MacronButtons(controller: _identifier, onInserted: () {}, personNames: true),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: _pickDate,
@@ -337,7 +349,10 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
     controller: _controllers[f],
     focusNode: _focus[f],
     style: italic ? const TextStyle(fontStyle: FontStyle.italic) : null,
-    decoration: InputDecoration(labelText: label, hintText: hint, border: const OutlineInputBorder(), isDense: true),
+    decoration: withClear(
+      InputDecoration(labelText: label, hintText: hint, border: const OutlineInputBorder(), isDense: true),
+      _controllers[f]!,
+    ),
   );
 
   /// 候補の一覧。和名の50音順に最大20件を出し、5件ぶんの高さでスクロールする。
@@ -355,17 +370,18 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
                   ? '候補 $_matched件のうち、和名の50音順で ${_candidates.length}件(さらに入力すると絞り込めます)'
                   : '候補 ${_candidates.length}件(選ぶとまとめて入ります)', style: const TextStyle(fontSize: 12)),
           ),
-          SizedBox(
-            height: shown * _candidateRowHeight,
+          // 5件ぶんの高さまで。名前が長いときは折り返して全体を見せるので、行の高さは変わる
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: shown * _candidateRowHeight),
             child: ListView.builder(
-              itemExtent: _candidateRowHeight,
+              shrinkWrap: true,
               itemCount: _candidates.length,
               itemBuilder: (context, i) {
                 final c = _candidates[i];
                 return ListTile(
                   dense: true,
-                  title: Text(c.name.label, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: c.name.authorship == null ? null : Text(c.name.authorship!, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title: SpeciesNameText(c.name),
+                  subtitle: c.name.authorship == null ? null : Text(c.name.authorship!),
                   trailing: c.fromCatalog ? const Text('目録', style: TextStyle(fontSize: 12)) : null,
                   onTap: () => _pick(c.name),
                 );

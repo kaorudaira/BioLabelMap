@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../common/clear_button.dart';import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../domain/specimen_list.dart';
@@ -101,7 +102,11 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
         ? TextField(
             controller: _searchController,
             autofocus: true,
-            decoration: const InputDecoration(hintText: '種名・地名・標本番号', border: InputBorder.none),
+            decoration: withClear(
+              const InputDecoration(hintText: '種名・地名・標本番号', border: InputBorder.none),
+              _searchController,
+              onCleared: () => setState(() => _filter = _filter.copyWith(query: '')),
+            ),
             onChanged: (v) => setState(() => _filter = _filter.copyWith(query: v)),
           )
         : const Text('標本一覧'),

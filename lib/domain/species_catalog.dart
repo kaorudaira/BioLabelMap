@@ -93,6 +93,31 @@ class SpeciesCatalog {
     return limit == null ? all : all.take(limit).toList();
   }
 
+  /// 入力した項目(和名・属名・種小名・亜種名)が、候補の同じ項目に含まれる種を返す。
+  /// 先頭が一致するものを先に並べる。[limit] が null なら、合うものを全て返す。
+  List<CatalogEntry> searchFields(SpeciesNameQuery query, {int? limit = 8}) {
+    if (query.isEmpty) return const [];
+    // 先頭が合うかは、最初に入力した欄(和名、属名、種小名、亜種名の順)で見る
+    final fields = [query.vernacular, query.genus, query.species, query.subspecies];
+    final index = fields.indexWhere((q) => q.trim().isNotEmpty);
+    final first = fields[index].trim().toLowerCase();
+    final starts = <CatalogEntry>[];
+    final contains = <CatalogEntry>[];
+    for (final e in entries) {
+      final ok = query.matchesFields(
+        vernacular: e.vernacular,
+        genus: e.genus,
+        species: e.species,
+        subspecies: e.subspecies,
+      );
+      if (!ok) continue;
+      final value = [e.vernacular, e.genus, e.species, e.subspecies][index];
+      ((value ?? '').toLowerCase().startsWith(first) ? starts : contains).add(e);
+    }
+    final all = [...starts, ...contains];
+    return limit == null ? all : all.take(limit).toList();
+  }
+
   /// 入力した種名に完全に一致する種が1つだけあれば、それを返す(自動入力用)。
   ///
   /// 入力済みの項目(和名・属・種・亜種)は、すべて目録と一致していなければならない。
