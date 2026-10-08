@@ -76,11 +76,7 @@ class LabelService {
 
   /// ごみ箱を除く標本を、標本番号順に返す。DB が変わるたびに流れ直す。
   Stream<List<LabelCandidate>> watchCandidates() => _db
-      .customSelect(
-        'SELECT 1',
-        readsFrom: {_db.specimens, _db.collectionEvents, _db.localities, _db.identifications},
-      )
-      .watch()
+      .changesOf({_db.specimens, _db.collectionEvents, _db.localities, _db.identifications})
       .asyncMap((_) => _load());
 
   Future<List<LabelCandidate>> _load() async {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:biolabelmap/core/db/database.dart';
 import 'package:biolabelmap/domain/models/calendar_date.dart';
 import 'package:biolabelmap/domain/models/collection_period.dart';
@@ -157,6 +159,38 @@ void main() {
       await edit.apply(r.specimenIds, const SpecimenEdit());
       expect(() => edit.apply([], const SpecimenEdit(sex: Change(Sex.male))), throwsArgumentError);
       expect(() => edit.apply([9999], const SpecimenEdit(sex: Change(Sex.male))), throwsStateError);
+    });
+  });
+
+  group('画面への反映', () {
+    test('地点詳細を開いたままでも、標本詳細・一覧の流れは、標本や採集の修正で流れ直す', () async {
+      // 地点詳細(地点だけを読む流れ)が先に開いている
+      final r = await save(count: 2);
+      final locality = specimens.watchLocality(r.localityId).listen((_) {});
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      final remarks = <String?>[];
+      final habitats = <String?>[];
+      final subs = <StreamSubscription<Object?>>[
+        specimens.watchDetail(r.specimenIds.first).listen((d) => remarks.add(d?.specimen.remarks)),
+        specimens.watchDetail(r.specimenIds.first).listen((d) => habitats.add(d?.event.habitat)),
+      ];
+      final listed = <int>[];
+      subs.add(specimens.watchItems().listen((items) => listed.add(items.length)));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      await edit.apply([r.specimenIds.first], const SpecimenEdit(remarks: Change('朝霧'), habitat: Change('草地')));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await edit.moveToTrash([r.specimenIds.last]);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(remarks.last, '朝霧');
+      expect(habitats.last, '草地');
+      expect(listed.last, 1);
+      await locality.cancel();
+      for (final s in subs) {
+        await s.cancel();
+      }
     });
   });
 

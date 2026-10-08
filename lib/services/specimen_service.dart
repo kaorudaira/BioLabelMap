@@ -47,11 +47,7 @@ class SpecimenService {
 
   /// 標本・採集・地点・同定のどれかが変わるたびに、流れ直す合図。
   Stream<void> get _changes => _db
-      .customSelect(
-        'SELECT 1',
-        readsFrom: {_db.specimens, _db.collectionEvents, _db.localities, _db.identifications},
-      )
-      .watch();
+      .changesOf({_db.specimens, _db.collectionEvents, _db.localities, _db.identifications});
 
   /// 標本一覧に並べる標本。[trashed] が true ならごみ箱の中、false なら有効な標本。
   Stream<List<SpecimenListItem>> watchItems({bool trashed = false}) =>
@@ -59,8 +55,7 @@ class SpecimenService {
 
   /// 地点1件。見つからなければ null。
   Stream<Locality?> watchLocality(int localityId) => _db
-      .customSelect('SELECT 1', readsFrom: {_db.localities})
-      .watch()
+      .changesOf({_db.localities})
       .asyncMap((_) => (_db.select(_db.localities)..where((l) => l.id.equals(localityId))).getSingleOrNull());
 
   /// 標本1件の詳細。見つからなければ null。

@@ -107,7 +107,7 @@ class DictionaryService {
   // ---- 辞書管理(S-10) ----
 
   Stream<void> _changes(Set<TableInfo> tables) =>
-      _db.customSelect('SELECT 1', readsFrom: tables).watch();
+      _db.changesOf(tables);
 
   /// 地名のローマ字。大字の和名順。
   Stream<List<DictRow<PlaceRomajiEntry>>> watchPlaces() =>
