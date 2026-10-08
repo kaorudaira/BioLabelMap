@@ -46,7 +46,7 @@ void main() {
         prefectureEn: 'Niigata-ken',
         countyEn: 'Minamiuonuma-gun',
         municipalityEn: 'Yuzawa-machi',
-        localityEn: 'Tsuchitaru',
+        localityEn: 'Tsuchidaru',
         elevationMeters: 700,
         latitude: 36.8834,
         longitude: 138.8205,
@@ -58,12 +58,12 @@ void main() {
       ));
       expect(lines, hasLength(6));
       expect(lines[1], const DataLabelLine(
-          'Minamiuonuma-gun, Yuzawa-machi, Tsuchitaru', DataLabelLineRole.address));
+          'Minamiuonuma-gun, Yuzawa-machi, Tsuchidaru', DataLabelLineRole.address));
       expect(lines.last, const DataLabelLine(
           '南魚沼郡湯沢町土樽', DataLabelLineRole.japanese));
       expect(
         dataLabelAsSingleLine(lines),
-        'JAPAN: Niigata-ken, Minamiuonuma-gun, Yuzawa-machi, Tsuchitaru, '
+        'JAPAN: Niigata-ken, Minamiuonuma-gun, Yuzawa-machi, Tsuchidaru, '
         '(alt. 700 m), 36.8834°N 138.8205°E, 5. VII. 2026, K. YOSHIHARA, '
         '南魚沼郡湯沢町土樽',
       );

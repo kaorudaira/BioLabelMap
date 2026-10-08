@@ -24,6 +24,7 @@ import 'dart:io';
 
 import 'package:charset/charset.dart';
 
+import 'csv.dart';
 import 'romanize.dart';
 import 'xlsx_reader.dart';
 
@@ -247,12 +248,12 @@ _PostData _readPost() {
 
   // `(String, String)` はレコード型。`.$1` `.$2` で取り出す(Java の record に近い)。
   final romeByKey = <String, (String, String)>{};
-  for (final f in _parseCsv(readSjis('KEN_ALL_ROME.CSV'))) {
+  for (final f in parseCsv(readSjis('KEN_ALL_ROME.CSV'))) {
     romeByKey['${f[0]}|${compact(f[2])}'] = (f[4].trim(), f[5].trim());
   }
 
   final data = _PostData();
-  for (final f in _parseCsv(readSjis('KEN_ALL.CSV'))) {
+  for (final f in parseCsv(readSjis('KEN_ALL.CSV'))) {
     final code = f[0].padLeft(5, '0');
     final rome = romeByKey['${f[2]}|${compact(f[7])}'];
     if (rome == null) continue;
@@ -270,38 +271,4 @@ Map<String, Map<String, Object>> _readOverrides() {
   if (!file.existsSync()) return {};
   final decoded = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
   return decoded.map((k, v) => MapEntry(k, Map<String, Object>.from(v as Map)));
-}
-
-/// ダブルクォートで囲まれたフィールドを含む CSV を読む(改行を含むフィールドは扱わない)。
-List<List<String>> _parseCsv(String content) {
-  final rows = <List<String>>[];
-  for (final line in const LineSplitter().convert(content)) {
-    if (line.isEmpty) continue;
-    final fields = <String>[];
-    final buf = StringBuffer();
-    var quoted = false;
-    for (var i = 0; i < line.length; i++) {
-      final c = line[i];
-      if (quoted) {
-        if (c == '"' && i + 1 < line.length && line[i + 1] == '"') {
-          buf.write('"');
-          i++;
-        } else if (c == '"') {
-          quoted = false;
-        } else {
-          buf.write(c);
-        }
-      } else if (c == '"') {
-        quoted = true;
-      } else if (c == ',') {
-        fields.add(buf.toString());
-        buf.clear();
-      } else {
-        buf.write(c);
-      }
-    }
-    fields.add(buf.toString());
-    rows.add(fields);
-  }
-  return rows;
 }

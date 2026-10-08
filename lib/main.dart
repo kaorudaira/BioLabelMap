@@ -1,13 +1,19 @@
+import 'dart:isolate';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
 import 'core/gsi/municipality_directory.dart';
+import 'core/gsi/oaza_romaji_table.dart';
 import 'services/service_providers.dart';
 
 /// 自治体の対応表の場所(pubspec.yaml の assets に登録してある)。
 const municipalitiesAsset = 'assets/data/municipalities.json';
+
+/// 大字のローマ字の対応表(公的データ)の場所。
+const oazaRomajiAsset = 'assets/data/oaza_romaji.json';
 
 // `async` な main。起動前に対応表を読み込んでから画面を出す。
 Future<void> main() async {
@@ -15,12 +21,18 @@ Future<void> main() async {
   final directory = JsonMunicipalityDirectory.parse(
     await rootBundle.loadString(municipalitiesAsset),
   );
+  // 大字の表は約3MBあるので、画面を止めないよう別の Isolate(Java のスレッドに近い)で読む
+  final oazaSource = await rootBundle.loadString(oazaRomajiAsset);
+  final oaza = await Isolate.run(() => OazaRomajiTable.parse(oazaSource));
 
   // ProviderScope は Riverpod の Provider を保持する入れ物(Spring の ApplicationContext に近い)。
   // overrides で、起動時に作った対応表を Provider に差し込む。
   runApp(
     ProviderScope(
-      overrides: [municipalityDirectoryProvider.overrideWithValue(directory)],
+      overrides: [
+        municipalityDirectoryProvider.overrideWithValue(directory),
+        oazaRomajiTableProvider.overrideWithValue(oaza),
+      ],
       child: const BioLabelMapApp(),
     ),
   );

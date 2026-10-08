@@ -157,6 +157,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: Text('次の番号: $next'),
               subtitle: const Text('開始番号は初回にだけ設定でき、変更できません。番号は記録のたびに自動で進みます。'),
             ),
+            const Divider(height: 40),
+            Text('データの出典', style: textTheme.titleMedium),
+            const SizedBox(height: 8),
+            // アドレス・ベース・レジストリは CC BY 4.0。加工したことと出典を示す
+            Text(
+              '県・市町村の英語表記: 総務省「全国地方公共団体コード」、日本郵便「郵便番号データ」を加工して作成\n\n'
+              '大字のローマ字: デジタル庁「アドレス・ベース・レジストリ」'
+              '(https://www.digital.go.jp/policies/base_registry_address、CC BY 4.0)、'
+              '日本郵便「郵便番号データ」を加工して作成。長音のマクロンはカナから補っています',
+              style: textTheme.bodySmall,
+            ),
           ],
         ),
       ),

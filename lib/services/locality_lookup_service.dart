@@ -3,17 +3,21 @@ import 'package:drift/drift.dart';
 import '../core/db/database.dart';
 import '../core/gsi/gsi_api.dart';
 import '../core/gsi/municipality_directory.dart';
+import '../core/gsi/oaza_romaji_table.dart';
 import '../domain/models/place_info.dart';
 
 /// 逆ジオコーダの結果から、地名(和・英)を作る。
 ///
-/// 県・郡・市町村は内蔵の対応表、大字のローマ字は辞書から引く。
-/// [currentLocalityEn] があれば(手入力済み)、大字のローマ字はそれを優先する。
+/// 県・郡・市町村は内蔵の対応表から引く。大字のローマ字は、次の順で決める。
+/// 1. [currentLocalityEn](手入力済み)
+/// 2. 辞書(これまでに手入力した綴り)
+/// 3. 公的データの対応表([oaza])。マクロンを含むものは確認が要るため、ここでは入れない
 Future<PlaceInfo> buildPlaceInfo(
   AppDatabase db,
   MunicipalityDirectory directory,
   GsiAddress address, {
   String? currentLocalityEn,
+  OazaRomajiTable oaza = OazaRomajiTable.empty,
 }) async {
   final names = directory.lookup(address.municipalityCode);
 
@@ -27,6 +31,10 @@ Future<PlaceInfo> buildPlaceInfo(
           ))
         .getSingleOrNull();
     localityEn = entry?.localityEn;
+  }
+  if (localityEn == null) {
+    final public = oaza.lookup(address.municipalityCode, address.localityJa);
+    if (public != null && !public.needsConfirmation) localityEn = public.value;
   }
 
   return PlaceInfo(
@@ -79,11 +87,12 @@ class LookupResult {
 /// 記録画面を開いたときに、標高と地名をその場で取得する(要件定義 F-04)。
 /// 圏外なら何も取れず、保存後に補完キューで取得する(F-05)。
 class LocalityLookupService {
-  LocalityLookupService(this._db, this._api, this._directory);
+  LocalityLookupService(this._db, this._api, this._directory, {this._oaza = OazaRomajiTable.empty});
 
   final AppDatabase _db;
   final GsiApi _api;
   final MunicipalityDirectory _directory;
+  final OazaRomajiTable _oaza;
 
   Future<LookupResult> lookup(double latitude, double longitude) async {
     try {
@@ -95,7 +104,7 @@ class LocalityLookupService {
           NotAvailable() => null,
         },
         place: switch (address) {
-          Found(:final value) => await buildPlaceInfo(_db, _directory, value),
+          Found(:final value) => await buildPlaceInfo(_db, _directory, value, oaza: _oaza),
           NotAvailable() => null,
         },
       );

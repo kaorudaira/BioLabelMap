@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../core/db/database.dart';
 import '../core/gsi/gsi_api.dart';
 import '../core/gsi/municipality_directory.dart';
+import '../core/gsi/oaza_romaji_table.dart';
 import '../domain/status.dart';
 import 'locality_lookup_service.dart';
 
@@ -35,6 +36,7 @@ class EnrichmentService {
     this._api,
     this._directory, {
     DateTime Function()? clock,
+    this._oaza = OazaRomajiTable.empty,
   }) : _clock = clock ?? DateTime.now;
   // `DateTime Function()` は「引数なしで DateTime を返す関数」の型。
   // Java の `Supplier<LocalDateTime>` に相当し、テストで時刻を固定するために受け取る。
@@ -43,6 +45,7 @@ class EnrichmentService {
   final GsiApi _api;
   final MunicipalityDirectory _directory;
   final DateTime Function() _clock;
+  final OazaRomajiTable _oaza;
 
   /// 通信エラー後の自動再試行の間隔。3回までで、その後は次のきっかけを待つ。
   static const retryDelays = [
@@ -169,12 +172,13 @@ class EnrichmentService {
     Locality locality,
     GsiAddress address,
   ) async {
-    // 大字のローマ字は、手入力済みならそれを残し、無ければ辞書から補う
+    // 大字のローマ字は、手入力済みならそれを残し、無ければ辞書か公的データの対応表から補う
     final place = await buildPlaceInfo(
       _db,
       _directory,
       address,
       currentLocalityEn: locality.localityEn,
+      oaza: _oaza,
     );
     return LocalitiesCompanion(
       municipalityCode: Value(place.municipalityCode),

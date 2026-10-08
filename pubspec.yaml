@@ -79,6 +79,8 @@ flutter:
   assets:
     # 自治体コード → 県・市区町村の名前(和・英)。tools/municipalities/ で生成する
     - assets/data/municipalities.json
+    # 自治体コード+大字 → 大字のローマ字(公的データ)。tools/municipalities/build_oaza.dart で生成する
+    - assets/data/oaza_romaji.json
     # ラベルの欧文フォント(SIL Open Font License。FiraSansCondensed-OFL.txt を同梱)
     - assets/fonts/FiraSansCondensed-Regular.ttf
     - assets/fonts/FiraSansCondensed-Italic.ttf
