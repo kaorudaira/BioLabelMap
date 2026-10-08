@@ -38,7 +38,11 @@ class _LocalityDetailScreenState extends ConsumerState<LocalityDetailScreen> {
       return Scaffold(appBar: AppBar(title: const Text('地点')), body: const Center(child: Text('地点が見つかりません')));
     }
 
-    final here = [for (final i in items.value ?? const <SpecimenListItem>[]) if (i.localityId == l.id) i];
+    // 同じ場所(緯度経度の判定キーが同じ)の標本をすべて出す。地名の修正で地点を複製しても、1つにまとまる
+    final here = [
+      for (final i in items.value ?? const <SpecimenListItem>[])
+        if (i.latE4 == l.latE4 && i.lonE4 == l.lonE4) i,
+    ];
     final groups = arrangeSpecimens(here, sort: _sort);
     final span = periodSpanOf(here);
     final placeJa = formatPlaceJa(

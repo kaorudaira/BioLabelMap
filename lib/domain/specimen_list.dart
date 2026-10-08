@@ -21,6 +21,8 @@ class SpecimenListItem {
     required this.printed,
     this.deletedAt,
     this.labelMismatch = false,
+    this.latE4 = 0,
+    this.lonE4 = 0,
   });
 
   final int id;
@@ -56,6 +58,10 @@ class SpecimenListItem {
 
   /// 印刷したラベルの標高・地名が、いまの値と食い違っている(要件定義 第13章)。
   final bool labelMismatch;
+
+  /// 地点の判定キー(緯度経度を小数4桁で切り捨てて1万倍した整数)。同じキーの地点は、同じ場所として1つのピンにまとめる。
+  final int latE4;
+  final int lonE4;
 }
 
 /// 番号が未確定(仮)の標本の表示(要件定義 第14章)。

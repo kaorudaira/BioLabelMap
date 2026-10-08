@@ -18,6 +18,7 @@ SpecimenListItem item(
   SpeciesName species = SpeciesName.unidentified,
   CollectionPeriod? period,
   SamplingMethod method = SamplingMethod.sweeping,
+  bool? atSpot,
 }) => SpecimenListItem(
   id: n,
   catalogNumber: n,
@@ -31,6 +32,9 @@ SpecimenListItem item(
   placeJa: '新潟県魚沼市下折立',
   placeEn: 'Shimooritate',
   printed: false,
+  // 地点1(_locality)は 369447, 1392425。別の地点の標本は、別の場所
+  latE4: (atSpot ?? localityId == 1) ? 369447 : 350000,
+  lonE4: (atSpot ?? localityId == 1) ? 1392425 : 1390000,
 );
 
 final _locality = Locality(
@@ -114,6 +118,18 @@ void main() {
     await tester.tap(find.text('日付順'));
     await tester.pump();
     expect(y('オサムシ'), lessThan(y('クボタ')));
+  });
+
+  testWidgets('同じ場所に地点の行が複数あっても(地名の修正で複製された)、1つの地点詳細にまとめて出す', (tester) async {
+    // 地点3は、地点1と同じ座標(同じ判定キー)に複製された地点。地点2は、別の場所
+    await pump(tester, [
+      item(1, species: carabus),
+      item(2, species: carabus),
+      item(3, localityId: 3, atSpot: true, species: atheta),
+      item(9, localityId: 2),
+    ]);
+    expect(find.textContaining('3件、'), findsOneWidget);
+    expect(find.textContaining('クボタ'), findsOneWidget);
   });
 
   testWidgets('標本が無い地点は、案内を出す', (tester) async {

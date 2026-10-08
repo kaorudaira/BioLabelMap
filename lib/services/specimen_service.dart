@@ -170,6 +170,8 @@ class SpecimenService {
       printed: s.printedAt != null,
       deletedAt: s.deletedAt,
       labelMismatch: _mismatch(s, l, rounding),
+      latE4: l.latE4,
+      lonE4: l.lonE4,
     );
   }
 }
