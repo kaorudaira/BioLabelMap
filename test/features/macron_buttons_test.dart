@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  _foldTests();
   group('特殊文字のボタン', () {
-    Future<TextEditingController> pump(WidgetTester tester, double width, {bool person = true}) async {
+    Future<TextEditingController> pump(WidgetTester tester, double width, {bool person = true, bool open = true}) async {
       tester.view.physicalSize = Size(width, 800);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -17,7 +18,7 @@ void main() {
             body: Padding(
               // 入力欄のブロックの余白ぶん(左 32、右 24)
               padding: const EdgeInsets.fromLTRB(32, 12, 24, 12),
-              child: MacronButtons(controller: c, onInserted: () {}, personNames: person),
+              child: MacronButtons(controller: c, onInserted: () {}, personNames: person, initiallyOpen: open),
             ),
           ),
         ),
@@ -90,6 +91,75 @@ void main() {
       expect(c.text, '');
       expect(cleared, 1);
       expect(find.byTooltip('クリア'), findsNothing);
+    });
+  });
+}
+
+void _foldTests() {
+  group('特殊文字のボタンの開閉', () {
+    testWidgets('人名用は、ふだんは閉じていて、「特殊文字」を押すと開き、もう一度押すと閉じる', (tester) async {
+      final c = TextEditingController();
+      addTearDown(c.dispose);
+      await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: MacronButtons(controller: c, onInserted: () {}, personNames: true))),
+      );
+      expect(find.textContaining('特殊文字'), findsOneWidget);
+      expect(find.text('ô'), findsNothing);
+      expect(find.byIcon(Icons.expand_more), findsOneWidget);
+
+      await tester.tap(find.textContaining('特殊文字'));
+      await tester.pump();
+      expect(find.text('ô'), findsOneWidget);
+      expect(find.byIcon(Icons.expand_less), findsOneWidget);
+
+      await tester.tap(find.textContaining('特殊文字'));
+      await tester.pump();
+      expect(find.text('ô'), findsNothing);
+    });
+
+    testWidgets('開いて文字を入れても、閉じるまで開いたまま', (tester) async {
+      final c = TextEditingController();
+      addTearDown(c.dispose);
+      await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: MacronButtons(controller: c, onInserted: () {}, personNames: true))),
+      );
+      await tester.tap(find.textContaining('特殊文字'));
+      await tester.pump();
+      await tester.tap(find.text('ô'));
+      await tester.tap(find.text('ä'));
+      await tester.pump();
+      expect(c.text, 'ôä');
+      expect(find.text('ô'), findsOneWidget);
+    });
+
+    testWidgets('地名のローマ字用(ō ū Ō Ū)は、開閉せず、いつも見えている', (tester) async {
+      final c = TextEditingController();
+      addTearDown(c.dispose);
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: MacronButtons(controller: c, onInserted: () {}))));
+      expect(find.textContaining('特殊文字'), findsNothing);
+      expect(find.text('ō'), findsOneWidget);
+    });
+
+    testWidgets('二つのボタンは、別々に開閉する', (tester) async {
+      final a = TextEditingController();
+      final b = TextEditingController();
+      addTearDown(a.dispose);
+      addTearDown(b.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                MacronButtons(controller: a, onInserted: () {}, personNames: true),
+                MacronButtons(controller: b, onInserted: () {}, personNames: true),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.textContaining('特殊文字').first);
+      await tester.pump();
+      expect(find.text('ô'), findsOneWidget);
     });
   });
 }

@@ -96,6 +96,15 @@ void main() {
 
   Finder field(String label) => find.widgetWithText(TextField, label);
 
+  /// 特殊文字のボタン(ふだんは閉じている)を、種名の下と同定者の下の両方で開く。
+  Future<void> openSpecialCharacters(WidgetTester tester) async {
+    final count = find.textContaining('特殊文字').evaluate().length;
+    for (var i = 0; i < count; i++) {
+      await tester.tap(find.textContaining('特殊文字').at(i));
+      await tester.pump();
+    }
+  }
+
   testWidgets('属を打つと辞書の候補が出て、選ぶと和名・学名・命名者がまとめて入る', (tester) async {
     await pumpScreen(tester);
     await tester.enterText(field('属名'), 'cara');
@@ -186,6 +195,7 @@ void main() {
 
   testWidgets('ō のボタンは、触っていた欄に文字を入れる', (tester) async {
     await pumpScreen(tester);
+    await openSpecialCharacters(tester);
     await tester.tap(field('命名者・年'));
     await tester.pump();
     await tester.tap(find.text('ō').first);
@@ -425,6 +435,10 @@ void main() {
 
     testWidgets('同定者の欄の下にも、特殊文字のボタンがあり、同定者の欄に入る(種名の下のボタンは入らない)', (tester) async {
       await pumpScreen(tester);
+      // ふだんは閉じていて、場所をとらない
+      expect(find.text('ô'), findsNothing);
+      expect(find.textContaining('特殊文字'), findsNWidgets(2));
+      await openSpecialCharacters(tester);
       await tester.tap(field('同定者'));
       await tester.pump();
       // 種名の下と、同定者の下に1組ずつ
@@ -445,6 +459,7 @@ void main() {
 
     testWidgets('人名の特殊文字は、マクロンのほか、アクセントなどの文字を含む', (tester) async {
       await pumpScreen(tester);
+      await openSpecialCharacters(tester);
       for (final c in ['ō', 'ū', 'Ō', 'Ū', 'ā', 'ô', 'û', 'ä', 'ö', 'ü', 'ß', 'é', 'è', 'ñ', 'ø', 'å', 'ł', 'š']) {
         expect(find.text(c), findsNWidgets(2), reason: c);
       }
