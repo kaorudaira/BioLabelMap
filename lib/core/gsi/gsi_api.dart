@@ -133,9 +133,13 @@ class GsiApi {
         hits.add(PlaceHit(title: title, latitude: lat.toDouble(), longitude: lon.toDouble()));
       }
     }
-    // sort は安定ではないので、完全一致を先にするときは分けて並べる
-    final exact = hits.where((h) => h.title == q);
-    final others = hits.where((h) => h.title != q);
+    // 同じ名前で同じ場所(約100m以内)の結果は、データの出どころが違っても1件にまとめる
+    final seen = <String>{};
+    final unique = hits.where(
+      (h) => seen.add('${h.title}|${h.latitude.toStringAsFixed(3)}|${h.longitude.toStringAsFixed(3)}'),
+    ).toList();
+    final exact = unique.where((h) => h.title == q);
+    final others = unique.where((h) => h.title != q);
     return [...exact, ...others].take(maxResults).toList();
   }
 
