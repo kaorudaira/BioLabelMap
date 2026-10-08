@@ -10,6 +10,7 @@ import '../core/gsi/municipality_directory.dart';
 import '../core/gsi/oaza_romaji_table.dart';
 import '../core/label/label_pdf.dart';
 import '../core/tiles/offline_tile_store.dart';
+import '../domain/specimen_list.dart';
 import 'backup_service.dart';
 import 'draft_service.dart';
 import 'enrichment_service.dart';
@@ -19,6 +20,7 @@ import 'map_query_service.dart';
 import 'offline_map_service.dart';
 import 'record_service.dart';
 import 'settings_service.dart';
+import 'specimen_service.dart';
 
 // サービスの Provider。`ref.watch(他の Provider)` で依存を受け取る。
 // Spring のコンストラクタインジェクションと同じ考え方。
@@ -49,6 +51,10 @@ final labelServiceProvider = Provider(
 
 /// ラベル用のフォント(約5MB)。ラベル出力を初めて開いたときに読み込む。
 final labelFontsProvider = FutureProvider((ref) => LabelFonts.load());
+
+final specimenServiceProvider = Provider(
+  (ref) => SpecimenService(ref.watch(databaseProvider)),
+);
 
 final gsiApiProvider = Provider((ref) {
   final client = http.Client();
@@ -101,7 +107,15 @@ final localityPinsProvider = StreamProvider<List<LocalityPin>>(
   (ref) => ref.watch(mapQueryServiceProvider).watchPins(),
 );
 
-final labelCandidatesProvider = StreamProvider<List<LabelCandidate>>(
+final specimenItemsProvider = StreamProvider<List<SpecimenListItem>>(
+  (ref) => ref.watch(specimenServiceProvider).watchItems(),
+);
+
+final specimenDetailProvider = StreamProvider.family<SpecimenDetail?, int>(
+  (ref, id) => ref.watch(specimenServiceProvider).watchDetail(id),
+);
+
+final labelCandidatesProvider =StreamProvider<List<LabelCandidate>>(
   (ref) => ref.watch(labelServiceProvider).watchCandidates(),
 );
 

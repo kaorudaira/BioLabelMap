@@ -400,6 +400,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              leading: const Icon(Icons.list_alt),
+              title: const Text('標本一覧'),
+              onTap: () => Navigator.pop(context, '/specimens'),
+            ),
+            ListTile(
               leading: const Icon(Icons.print),
               title: const Text('ラベル出力'),
               onTap: () => Navigator.pop(context, '/labels'),
