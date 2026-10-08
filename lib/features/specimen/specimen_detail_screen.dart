@@ -147,6 +147,7 @@ class SpecimenDetailScreen extends ConsumerWidget {
         }),
         _Field('メモ', s.remarks),
         _Field('印刷', s.printedAt == null ? '未印刷' : '印刷済み(${_dateTime(s.printedAt!)})'),
+        if (d.labelMismatch) const _Field('ラベル', 'ラベルと不一致(印刷したあとに、標高や地名が変わりました。再印刷してください)'),
       ],
     );
   }

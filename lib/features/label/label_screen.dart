@@ -15,6 +15,7 @@ import '../../domain/label/identification_label.dart';
 import '../../domain/label/date_range_format.dart';
 import '../../domain/label/label_sheet.dart';
 import '../../services/label_service.dart';
+import '../../services/printed_label_values.dart';
 import '../../services/service_providers.dart';
 import '../record/macron_buttons.dart';
 import '../record/romaji_candidate.dart';
@@ -48,7 +49,8 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
       for (final c in candidates.value ?? const <LabelCandidate>[])
         if (widget.specimenIds == null || widget.specimenIds!.contains(c.specimen.id))
         // 未印刷のみは、データ・コレクションの印刷状態。同定ラベルだけを出すときは使わない
-        if (!_unprintedOnly || _unit == LabelUnit.identificationOnly || !c.printed) c,
+        // 印刷したラベルと食い違っている標本(補完や修正で標高・地名が変わった)も、再印刷の対象にする
+        if (!_unprintedOnly || _unit == LabelUnit.identificationOnly || !c.printed || c.labelMismatch(_rounding)) c,
     ];
     final targets = [for (final c in visible) if (!_excluded.contains(c.specimen.id)) c];
     final identified = targets.where((c) => c.identificationSource != null).length;
@@ -207,6 +209,8 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
     return groups.values.toList();
   }
 
+  ElevationRounding get _rounding => ref.read(settingsProvider).value?.elevationRounding ?? ElevationRounding.tenMeters;
+
   Widget _groupTile(List<LabelCandidate> group) {
     final first = group.first;
     final last = group.last;
@@ -237,7 +241,9 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
         children: [
           if (group.any((c) => c.pendingEnrichment))
             const Text('取得待ち', style: TextStyle(color: warningColor, fontSize: 12)),
-          if (group.any((c) => c.printed))
+          if (group.any((c) => c.labelMismatch(_rounding)))
+            const Text('ラベルと不一致', style: TextStyle(color: warningColor, fontSize: 12))
+          else if (group.any((c) => c.printed))
             const Text('印刷済み', style: TextStyle(color: Colors.black54, fontSize: 12))
           else
             const Text('未印刷', style: TextStyle(color: BlockColors.specimen, fontSize: 12)),
@@ -361,7 +367,9 @@ class _LabelScreenState extends ConsumerState<LabelScreen> {
       showCancel: false,
     );
     if (mark == 0) {
-      await ref.read(labelServiceProvider).markPrinted(layouts);
+      await ref.read(labelServiceProvider).markPrinted({
+        for (final c in targets) c.specimen.id: currentLabelValues(c.locality, rounding),
+      });
       _snack('${targets.length}件を印刷済みにしました');
     }
   }

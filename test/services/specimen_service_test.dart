@@ -2,8 +2,12 @@ import 'package:biolabelmap/core/db/database.dart';
 import 'package:biolabelmap/domain/models/calendar_date.dart';
 import 'package:biolabelmap/domain/models/collection_period.dart';
 import 'package:biolabelmap/domain/models/place_info.dart';
+import 'package:biolabelmap/domain/elevation_rounding.dart';
 import 'package:biolabelmap/domain/sampling_method.dart';
+import 'package:biolabelmap/domain/specimen_list.dart';
 import 'package:biolabelmap/domain/status.dart';
+import 'package:biolabelmap/services/label_service.dart';
+import 'package:biolabelmap/services/printed_label_values.dart';
 import 'package:biolabelmap/services/record_service.dart';
 import 'package:biolabelmap/services/settings_service.dart';
 import 'package:biolabelmap/services/specimen_service.dart';
@@ -120,6 +124,38 @@ void main() {
     expect(d.latest!.species, 'second');
     expect(d.period.isSingleDay, isTrue);
     expect(d.locality.localityJa, '下折立');
+  });
+
+  test('印刷したあとに標高や地名が変わった標本は、一覧も詳細も「ラベルと不一致」になる', () async {
+    final r = await save(count: 2);
+    // 1件目だけ印刷する
+    final locality = (await service.detail(r.specimenIds.first))!.locality;
+    await LabelService(db).markPrinted({
+      r.specimenIds.first: currentLabelValues(locality, ElevationRounding.tenMeters),
+    });
+
+    Future<Map<int, bool>> flags() async => {for (final i in await service.watchItems().first) i.id: i.labelMismatch};
+    expect((await flags()).values, everyElement(isFalse));
+
+    // 補完で、標高が入った
+    await (db.update(db.localities)).write(const LocalitiesCompanion(elevationMeters: Value(1420)));
+    expect(await flags(), {r.specimenIds.first: true, r.specimenIds.last: false}); // 印刷していない標本は、不一致にならない
+    expect((await service.detail(r.specimenIds.first))!.labelMismatch, isTrue);
+    expect((await service.detail(r.specimenIds.last))!.labelMismatch, isFalse);
+
+    final items = await service.watchItems().first;
+    expect(arrangeSpecimens(items, filter: const SpecimenFilter(mismatchOnly: true)).map((g) => g.first.id), [r.specimenIds.first]);
+  });
+
+  test('設定の標高の丸めを変えると、印刷した標本は「ラベルと不一致」になる', () async {
+    final r = await save();
+    await (db.update(db.localities)).write(const LocalitiesCompanion(elevationMeters: Value(1388.4)));
+    final locality = (await service.detail(r.specimenIds.single))!.locality;
+    await LabelService(db).markPrinted({r.specimenIds.single: currentLabelValues(locality, ElevationRounding.tenMeters)});
+    expect((await service.watchItems().first).single.labelMismatch, isFalse);
+
+    await (db.update(db.appSettings)).write(AppSettingsCompanion(elevationRounding: Value(ElevationRounding.oneMeter)));
+    expect((await service.watchItems().first).single.labelMismatch, isTrue);
   });
 
   test('詳細は、無い標本なら null', () async {

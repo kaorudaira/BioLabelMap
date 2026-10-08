@@ -93,6 +93,13 @@ class _FilterSheetState extends State<_FilterSheet> {
                 value: _filter.unprintedOnly,
                 onChanged: (v) => setState(() => _filter = _filter.copyWith(unprintedOnly: v)),
               ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('ラベルと不一致のみ'),
+                subtitle: const Text('印刷したあとに、標高や地名が変わった標本'),
+                value: _filter.mismatchOnly,
+                onChanged: (v) => setState(() => _filter = _filter.copyWith(mismatchOnly: v)),
+              ),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -107,6 +114,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                           methods: const {},
                           statuses: const {},
                           unprintedOnly: false,
+                          mismatchOnly: false,
                         ),
                       ),
                       child: const Text('条件を解除'),

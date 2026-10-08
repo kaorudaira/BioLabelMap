@@ -25,6 +25,7 @@ SpecimenListItem item(
   SpeciesName species = SpeciesName.unidentified,
   bool printed = false,
   IdentificationStatus? status,
+  bool mismatch = false,
 }) =>
     SpecimenListItem(
       id: n,
@@ -39,6 +40,7 @@ SpecimenListItem item(
       placeJa: '新潟県魚沼市下折立',
       placeEn: 'Shimooritate',
       printed: printed,
+      labelMismatch: mismatch,
     );
 
 void main() {
@@ -140,6 +142,21 @@ void main() {
       final dateLefts = tester.widgetList(find.textContaining('2026/6/20')).map((w) => tester.getTopLeft(find.byWidget(w)).dx);
       final methodLefts = tester.widgetList(find.text('スウィーピング')).map((w) => tester.getTopLeft(find.byWidget(w)).dx);
       expect({...dateLefts, ...methodLefts, lefts.first}, hasLength(1));
+    });
+
+    testWidgets('ラベルと不一致の標本がある行には、印を付ける。絞り込みで、不一致の標本だけを出せる', (tester) async {
+      final other = SpeciesName(vernacular: 'ヒメオサムシ', genus: 'Carabus', species: 'other');
+      await pumpList(tester, [item(1, species: carabus, mismatch: true, printed: true), item(2, species: other, printed: true)]);
+      expect(find.byIcon(Icons.sync_problem), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.filter_list));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ラベルと不一致のみ'));
+      await tester.pump();
+      await tester.tap(find.text('適用'));
+      await tester.pumpAndSettle();
+      expect(find.text('ラベルと不一致のみ'), findsOneWidget); // 条件の表示
+      expect(find.text('標本 1件(1行)'), findsOneWidget);
     });
 
     testWidgets('行と行の間に、区切りの線を入れる', (tester) async {
