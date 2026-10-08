@@ -111,7 +111,6 @@ class SpecimenService {
 
   SpecimenListItem _toItem(Specimen s, CollectionEvent e, Locality l, Identification? latest) {
     final method = e.samplingMethod;
-    final other = e.samplingMethodOther?.trim();
     return SpecimenListItem(
       id: s.id,
       catalogNumber: s.catalogNumber,
@@ -119,7 +118,7 @@ class SpecimenService {
       localityId: l.id,
       period: CollectionPeriod(e.startDate, e.endDate),
       method: method,
-      methodLabel: (method == SamplingMethod.other && other != null && other.isNotEmpty) ? other : method.nameJa,
+      methodLabel: formatSamplingMethod(method, e.samplingMethodOther),
       species: speciesNameOf(latest),
       status: latest?.status ?? IdentificationStatus.unidentified,
       placeJa: formatPlaceJa(
@@ -128,7 +127,12 @@ class SpecimenService {
         municipality: l.municipalityJa,
         locality: l.localityJa,
       ),
-      placeEn: [l.localityEn, l.municipalityEn, l.countyEn, l.prefectureEn].whereType<String>().join(' '),
+      placeEn: formatPlaceEn(
+        prefecture: l.prefectureEn,
+        county: l.countyEn,
+        municipality: l.municipalityEn,
+        locality: l.localityEn,
+      ),
       printed: s.printedAt != null,
       deletedAt: s.deletedAt,
     );

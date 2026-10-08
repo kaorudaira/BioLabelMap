@@ -14,6 +14,7 @@ import 'bulk_edit_screen.dart';
 import '../record/form_block.dart';
 import '../record/record_form.dart';
 import '../record/record_screen.dart';
+import 'species_name_text.dart';
 import 'status_mark.dart';
 
 /// 標本詳細(要件定義 S-05)。「この虫が何で、いつ、どこで採れたか」が上から読める順に並べる。
@@ -152,10 +153,7 @@ class SpecimenDetailScreen extends ConsumerWidget {
 
   Widget _collecting(BuildContext context, SpecimenDetail d) {
     final e = d.event;
-    final other = e.samplingMethodOther?.trim();
-    final method = e.samplingMethod == SamplingMethod.other && other != null && other.isNotEmpty
-        ? other
-        : e.samplingMethod.nameJa;
+    final method = formatSamplingMethod(e.samplingMethod, e.samplingMethodOther);
     return FormBlock(
       color: BlockColors.collecting,
       title: '採集',
@@ -179,14 +177,19 @@ class SpecimenDetailScreen extends ConsumerWidget {
       municipality: l.municipalityJa,
       locality: l.localityJa,
     );
-    final placeEn = [l.localityEn, l.municipalityEn, l.countyEn, l.prefectureEn].whereType<String>().join(', ');
+    final placeEn = formatPlaceEn(
+      prefecture: l.prefectureEn,
+      county: l.countyEn,
+      municipality: l.municipalityEn,
+      locality: l.localityEn,
+    );
     return FormBlock(
       color: BlockColors.location,
       title: '地点',
       children: [
         _Field('地名', placeJa.isEmpty ? _placeFallback(l) : placeJa),
         _Field('地名(英)', placeEn.isEmpty ? null : placeEn),
-        _Field('緯度経度', '${l.latitude.toStringAsFixed(5)}, ${l.longitude.toStringAsFixed(5)}'),
+        _Field('緯度経度', formatLatLon(l.latitude, l.longitude)),
         _Field('精度', l.isManualPosition ? '手動' : (l.accuracyMeters == null ? null : '±${l.accuracyMeters!.round()} m')),
         _Field('標高', l.elevationMeters != null ? '${l.elevationMeters!.round()} m' : _fetchText(l.elevationStatus)),
       ],
@@ -202,19 +205,26 @@ class SpecimenDetailScreen extends ConsumerWidget {
         for (final i in d.history)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
+            // 種名の左に印を置き、日付と同定者は、種名と同じ位置から始める
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Flexible(
-                  child: Text(
-                    [
-                      i.dateIdentified?.toIso() ?? _dateOnly(i.createdAt),
-                      i.identifiedBy,
-                    ].whereType<String>().where((e) => e.isNotEmpty).join('  '),
+                StatusMark(i.status),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SpeciesNameText(speciesNameOf(i)),
+                      Text(
+                        [
+                          i.dateIdentified?.toIso() ?? _dateOnly(i.createdAt),
+                          i.identifiedBy,
+                        ].whereType<String>().where((e) => e.isNotEmpty).join('  '),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                StatusMark(i.status, size: 18),
-                Flexible(flex: 2, child: Text(speciesNameOf(i).label)),
               ],
             ),
           ),
@@ -256,11 +266,16 @@ class _Field extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 同定の印は、項目名の枠の右端に置く。値は、印のある行もない行も、同じ位置から始まる
           SizedBox(
-            width: 96,
-            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+            width: 112,
+            child: Row(
+              children: [
+                Expanded(child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
+                if (mark != null) StatusMark(mark!),
+              ],
+            ),
           ),
-          if (mark != null) StatusMark(mark!),
           Expanded(
             child: Text(
               v,

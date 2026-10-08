@@ -124,23 +124,17 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
                   color: selected ? theme.colorScheme.primary : null,
                 ),
               ),
+            Padding(padding: const EdgeInsets.only(top: 2), child: StatusMark(i.status)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      StatusMark(i.status),
-                      Flexible(
-                        child: SpeciesNameText(
-                          i.species,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: i.species.isEmpty ? theme.disabledColor : BlockColors.identification,
-                          ),
-                        ),
-                      ),
-                    ],
+                  SpeciesNameText(
+                    i.species,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: i.species.isEmpty ? theme.disabledColor : BlockColors.identification,
+                    ),
                   ),
                   Text(
                     '${i.catalogText}  ${formatPeriodText(i.period)}',

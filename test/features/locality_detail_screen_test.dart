@@ -85,17 +85,17 @@ void main() {
       item(9, localityId: 2), // 別の地点の標本は数えない
     ]);
     expect(find.text('新潟県魚沼市下折立'), findsWidgets);
-    expect(find.text('Shimooritate, Uonuma-shi, Niigata-ken'), findsOneWidget);
-    expect(find.text('36.94471, 139.24258  標高 1390 m'), findsOneWidget);
+    expect(find.text('Niigata-ken, Uonuma-shi, Shimooritate'), findsOneWidget);
+    expect(find.text('36.94471°N 139.24258°E  標高 1390 m'), findsOneWidget);
     expect(find.text('3件、2026/6/19〜7/2'), findsOneWidget);
   });
 
-  testWidgets('行は、同じ場所なので地名を出さず、採集日は年を省く', (tester) async {
+  testWidgets('行は、同じ場所なので地名を出さず、採集日は年も出す', (tester) async {
     await pump(tester, [
       item(1, species: carabus, period: CollectionPeriod(CalendarDate(2026, 6, 19), CalendarDate(2026, 6, 20))),
       item(2, species: carabus, period: CollectionPeriod(CalendarDate(2026, 6, 19), CalendarDate(2026, 6, 20))),
     ]);
-    expect(find.text('6/19〜20'), findsOneWidget);
+    expect(find.text('2026/6/19〜20'), findsOneWidget);
     expect(find.text('×2  KYC00001〜2'), findsOneWidget);
     expect(find.textContaining('新潟県魚沼市下折立  '), findsNothing);
   });

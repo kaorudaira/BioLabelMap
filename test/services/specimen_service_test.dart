@@ -82,8 +82,8 @@ void main() {
     await save(method: SamplingMethod.other, other: '朽木割り');
     final item = (await service.watchItems().first).single;
     expect(item.placeJa, '新潟県魚沼市下折立');
-    expect(item.placeEn, contains('Shimooritate'));
-    expect(item.methodLabel, '朽木割り');
+    expect(item.placeEn, 'Niigata-ken, Uonuma-shi, Shimooritate');
+    expect(item.methodLabel, 'その他：朽木割り');
     expect(item.catalogText, 'KYC00001');
     expect(item.printed, isFalse);
   });

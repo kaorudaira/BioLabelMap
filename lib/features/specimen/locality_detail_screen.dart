@@ -71,7 +71,6 @@ class _LocalityDetailScreenState extends ConsumerState<LocalityDetailScreen> {
             SpecimenGroupTile(
               group: g,
               showPlace: false,
-              withYear: false,
               onTap: () => openSpecimenGroup(context, g),
             ),
             const Divider(height: 1),
@@ -119,7 +118,12 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = locality;
     final theme = Theme.of(context);
-    final placeEn = [l.localityEn, l.municipalityEn, l.countyEn, l.prefectureEn].whereType<String>().join(', ');
+    final placeEn = formatPlaceEn(
+      prefecture: l.prefectureEn,
+      county: l.countyEn,
+      municipality: l.municipalityEn,
+      locality: l.localityEn,
+    );
     final elevation = l.elevationMeters != null
         ? '標高 ${l.elevationMeters!.round()} m'
         : switch (l.elevationStatus) {
@@ -143,7 +147,7 @@ class _Header extends StatelessWidget {
           if (placeEn.isNotEmpty) Text(placeEn),
           const SizedBox(height: 4),
           Text(
-            ['${l.latitude.toStringAsFixed(5)}, ${l.longitude.toStringAsFixed(5)}', ?elevation].join('  '),
+            [formatLatLon(l.latitude, l.longitude), ?elevation].join('  '),
             style: theme.textTheme.bodySmall,
           ),
           const SizedBox(height: 6),

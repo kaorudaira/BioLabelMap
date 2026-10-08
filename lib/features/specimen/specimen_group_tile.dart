@@ -60,23 +60,18 @@ class SpecimenGroupTile extends StatelessWidget {
                   semanticLabel: selected ? '選択中' : '未選択',
                 ),
               ),
+            // 同定の印は左の枠に置き、和名・採集日・採集方法・件数は、同じ位置から始める
+            Padding(padding: const EdgeInsets.only(top: 2), child: StatusMark(first.status)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      StatusMark(first.status),
-                      Flexible(
-                        child: SpeciesNameText(
-                          first.species,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: unidentified ? theme.disabledColor : BlockColors.identification,
-                          ),
-                        ),
-                      ),
-                    ],
+                  SpeciesNameText(
+                    first.species,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: unidentified ? theme.disabledColor : BlockColors.identification,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(

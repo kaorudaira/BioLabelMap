@@ -125,11 +125,30 @@ void main() {
       await tester.tap(find.textContaining('オサムシ'));
       await tester.pump();
       expect(find.text('1件を選択'), findsOneWidget);
-      // 全部外すと、選択モードを抜ける
+      // 全部外しても、選択モードのまま。何も選んでいないときは、操作を押せない
       await tester.tap(find.textContaining('クボタ'));
+      await tester.pump();
+      expect(find.text('標本を選んでください'), findsOneWidget);
+      final inkWells = find.ancestor(of: find.text('ラベル出力'), matching: find.byType(InkWell));
+      expect(tester.widget<InkWell>(inkWells).onTap, isNull);
+      await tester.tap(find.byTooltip('選択を解除'));
       await tester.pump();
       expect(find.text('標本一覧'), findsOneWidget);
       expect(find.text('ラベル出力'), findsNothing);
+    });
+
+    testWidgets('上部の「選択」ボタンで選択モードに入り、行をタップして選ぶ', (tester) async {
+      await pump(tester, [item(1, species: carabus), item(3, species: atheta)]);
+      expect(find.text('ラベル出力'), findsNothing);
+      await tester.tap(find.byTooltip('選択'));
+      await tester.pump();
+      expect(find.text('標本を選んでください'), findsOneWidget);
+      expect(find.text('ラベル出力'), findsOneWidget);
+
+      await tester.tap(find.textContaining('クボタ'));
+      await tester.pump();
+      expect(find.text('1件を選択'), findsOneWidget);
+      expect(tester.widget<InkWell>(find.ancestor(of: find.text('ラベル出力'), matching: find.byType(InkWell))).onTap, isNotNull);
     });
 
     testWidgets('全て選択・全て解除と、選択を閉じるボタン', (tester) async {
@@ -141,7 +160,8 @@ void main() {
       expect(find.text('2件を選択'), findsOneWidget);
       await tester.tap(find.text('全て解除'));
       await tester.pump();
-      expect(find.text('標本一覧'), findsOneWidget);
+      expect(find.text('0件を選択'), findsNothing);
+      expect(find.text('標本を選んでください'), findsOneWidget);
 
       await tester.longPress(find.textContaining('クボタ'));
       await tester.pump();
@@ -317,6 +337,7 @@ void main() {
       await tester.tap(find.text('ルッキング').last);
       await tester.pumpAndSettle();
       await tester.enterText(field('大字(和)'), '下折立温泉');
+      await tester.enterText(field('大字(ローマ字)'), 'Shimooritate-onsen');
       await tester.tap(find.text('2件に反映'));
       await tester.pumpAndSettle();
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
@@ -340,6 +361,75 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('結果: false'), findsOneWidget);
       expect(await tester.runAsync(() => db.select(db.collectionEvents).get()), hasLength(1));
+    });
+
+    testWidgets('地名の和文だけを変えるときは、確認を出す。「戻る」なら保存しない', (tester) async {
+      await seed(tester);
+      await pump(tester, BulkEditArgs(ids));
+      await tester.enterText(field('大字(和)'), '下折立温泉');
+      await tester.tap(find.text('3件に反映'));
+      await tester.pumpAndSettle();
+      expect(find.text('和文の地名だけを変更します'), findsOneWidget);
+      expect(find.textContaining('英文(ローマ字)の地名は変わりません'), findsOneWidget);
+
+      await tester.tap(find.text('戻る'));
+      await tester.pumpAndSettle();
+      expect(find.text('一括編集(3件)'), findsOneWidget); // 編集画面に残る
+      final unchanged = (await tester.runAsync(() => SpecimenService(db).detail(ids[0])))!;
+      expect(unchanged.locality.localityJa, '下折立');
+    });
+
+    testWidgets('地名の英文だけを変えるときも、確認を出す。「そのまま保存」なら保存する', (tester) async {
+      await seed(tester);
+      await pump(tester, BulkEditArgs(ids));
+      await tester.enterText(field('大字(ローマ字)'), 'Shimooritate-onsen');
+      await tester.tap(find.text('3件に反映'));
+      await tester.pumpAndSettle();
+      expect(find.text('英文の地名だけを変更します'), findsOneWidget);
+
+      await tester.tap(find.text('そのまま保存'));
+      await tester.pumpAndSettle();
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pumpAndSettle();
+      final changed = (await tester.runAsync(() => SpecimenService(db).detail(ids[0])))!;
+      expect(changed.locality.localityEn, 'Shimooritate-onsen');
+      expect(changed.locality.localityJa, '下折立');
+    });
+
+    testWidgets('和文と英文の両方を変えるときは、確認を出さない', (tester) async {
+      await seed(tester);
+      await pump(tester, BulkEditArgs(ids));
+      await tester.enterText(field('大字(和)'), '下折立温泉');
+      await tester.enterText(field('大字(ローマ字)'), 'Shimooritate-onsen');
+      await tester.tap(find.text('3件に反映'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('だけを変更します'), findsNothing);
+      expect(find.text('3件を修正しました'), findsOneWidget);
+    });
+
+    testWidgets('採集方法だけを変えるときは、地名の確認を出さない', (tester) async {
+      await seed(tester);
+      await pump(tester, BulkEditArgs(ids));
+      await tester.tap(find.text('変更しない'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ルッキング').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('3件に反映'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('だけを変更します'), findsNothing);
+    });
+
+    testWidgets('編集:座標を、いまの座標を表示して「地図で座標を直す」から選び直せる', (tester) async {
+      final d = await seed(tester);
+      await pump(tester, BulkEditArgs([ids.first], initial: d));
+      expect(find.text('36.90000°N 139.20000°E'), findsOneWidget);
+      expect(find.text('地図で座標を直す'), findsOneWidget);
+    });
+
+    testWidgets('一括編集では、座標は直せない', (tester) async {
+      await seed(tester);
+      await pump(tester, BulkEditArgs(ids));
+      expect(find.text('地図で座標を直す'), findsNothing);
     });
 
     testWidgets('編集:いまの値が入っている。1件だけ直すと、その標本のために採集を複製する', (tester) async {
@@ -380,6 +470,9 @@ void main() {
       await pump(tester, BulkEditArgs(ids, initial: d));
       await tester.enterText(field('大字(ローマ字)'), '');
       await tester.tap(find.text('保存'));
+      await tester.pumpAndSettle();
+      // 英文だけを変えるので、確認が出る
+      await tester.tap(find.text('そのまま保存'));
       await tester.pumpAndSettle();
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
       await tester.pumpAndSettle();

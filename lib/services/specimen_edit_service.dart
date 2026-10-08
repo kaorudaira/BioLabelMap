@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../core/db/database.dart';
+import '../domain/locality_key.dart';
 import '../domain/models/collection_period.dart';
 import '../domain/sampling_method.dart';
 import '../domain/status.dart';
@@ -41,6 +42,7 @@ class SpecimenEdit {
     this.sex,
     this.remarks,
     this.place = const {},
+    this.position,
   });
 
   // 採集に属する項目(同じ採集を共有する標本は、いっしょに変わる。一部だけ直すときは採集を複製する)
@@ -59,6 +61,9 @@ class SpecimenEdit {
   /// 地名。入っている項目だけ変える(値が null か空なら、その項目を空にする)。
   final Map<PlaceField, String?> place;
 
+  /// 座標。直すと、標高と地名は取り直す(補完待ちに入れる)。地名も同時に直したときは、その地名を残す。
+  final ({double latitude, double longitude})? position;
+
   bool get changesEvent =>
       period != null ||
       method != null ||
@@ -70,7 +75,7 @@ class SpecimenEdit {
 
   bool get changesSpecimen => sex != null || remarks != null;
 
-  bool get isEmpty => !changesEvent && !changesSpecimen && place.isEmpty;
+  bool get isEmpty => !changesEvent && !changesSpecimen && place.isEmpty && position == null;
 }
 
 /// 修正・ごみ箱・完全な削除(要件定義 S-04・S-05・第12章)。
@@ -109,7 +114,7 @@ class SpecimenEditService {
           ),
         );
       }
-      if (!edit.changesEvent && edit.place.isEmpty) return;
+      if (!edit.changesEvent && edit.place.isEmpty && edit.position == null) return;
 
       // 1. 採集ごとに、直す採集(そのまま、または複製)を決める
       final editedEvents = <int>{};
@@ -147,8 +152,8 @@ class SpecimenEditService {
         );
       }
 
-      // 3. 地名を直す。選んでいない採集が使っている地点は、複製して付け替える
-      if (edit.place.isNotEmpty) {
+      // 3. 地名・座標を直す。選んでいない採集が使っている地点は、複製して付け替える
+      if (edit.place.isNotEmpty || edit.position != null) {
         final events = await (_db.select(_db.collectionEvents)..where((e) => e.id.isIn(editedEvents))).get();
         for (final localityId in {for (final e in events) e.localityId}) {
           final users = await (_db.select(_db.collectionEvents)..where((e) => e.localityId.equals(localityId))).get();
@@ -164,13 +169,52 @@ class SpecimenEditService {
               CollectionEventsCompanion(localityId: Value(target)),
             );
           }
-          await (_db.update(_db.localities)..where((l) => l.id.equals(target))).write(_placeCompanion(edit.place));
+          await (_db.update(_db.localities)..where((l) => l.id.equals(target))).write(_localityCompanion(edit));
+          if (edit.position != null) {
+            await _enqueue(target, EnrichmentKind.elevation);
+            if (edit.place.isEmpty) await _enqueue(target, EnrichmentKind.place);
+          }
         }
       }
     });
   }
 
   Value<String?> _text(Change<String?>? c) => c == null ? const Value.absent() : Value(_clean(c.value));
+
+  Future<void> _enqueue(int localityId, EnrichmentKind kind) => _db.into(_db.enrichmentQueue).insert(
+    EnrichmentQueueCompanion.insert(localityId: localityId, kind: kind),
+    mode: InsertMode.insertOrIgnore,
+  );
+
+  /// 地点に書く内容。座標を直したときは、標高と(地名を直していなければ)地名を空にして、取り直しに回す。
+  LocalitiesCompanion _localityCompanion(SpecimenEdit edit) {
+    var companion = edit.place.isEmpty ? const LocalitiesCompanion() : _placeCompanion(edit.place);
+    if (edit.position case final p?) {
+      final key = LocalityKey.fromCoordinates(p.latitude, p.longitude);
+      companion = companion.copyWith(
+        latitude: Value(p.latitude),
+        longitude: Value(p.longitude),
+        latE4: Value(key.latE4),
+        lonE4: Value(key.lonE4),
+        isManualPosition: const Value(true),
+        accuracyMeters: const Value(null),
+        elevationMeters: const Value(null),
+        elevationStatus: const Value(FetchStatus.pending),
+        // 地名を直していなければ、新しい座標で取り直す
+        prefectureJa: edit.place.isEmpty ? const Value(null) : companion.prefectureJa,
+        countyJa: edit.place.isEmpty ? const Value(null) : companion.countyJa,
+        municipalityJa: edit.place.isEmpty ? const Value(null) : companion.municipalityJa,
+        localityJa: edit.place.isEmpty ? const Value(null) : companion.localityJa,
+        prefectureEn: edit.place.isEmpty ? const Value(null) : companion.prefectureEn,
+        countyEn: edit.place.isEmpty ? const Value(null) : companion.countyEn,
+        municipalityEn: edit.place.isEmpty ? const Value(null) : companion.municipalityEn,
+        localityEn: edit.place.isEmpty ? const Value(null) : companion.localityEn,
+        municipalityCode: edit.place.isEmpty ? const Value(null) : const Value.absent(),
+        placeStatus: edit.place.isEmpty ? const Value(FetchStatus.pending) : companion.placeStatus,
+      );
+    }
+    return companion;
+  }
 
   LocalitiesCompanion _placeCompanion(Map<PlaceField, String?> place) {
     Value<String?> v(PlaceField f) => place.containsKey(f) ? Value(_clean(place[f])) : const Value.absent();

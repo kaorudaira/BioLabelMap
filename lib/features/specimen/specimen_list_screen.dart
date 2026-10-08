@@ -25,10 +25,18 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
   var _searching = false;
   final _searchController = TextEditingController();
 
-  /// 選んだ標本(標本の ID)。空でなければ選択モード。行は標本のまとまりなので、行ごとにまとめて選ぶ。
+  /// 選んだ標本(標本の ID)。行は標本のまとまりなので、行ごとにまとめて選ぶ。
   final _selected = <int>{};
 
-  bool get _selecting => _selected.isNotEmpty;
+  /// 選択モードか。上部の「選択」ボタンか、行の長押しで入る。何も選んでいなくても、選択モードのままにする。
+  var _selectMode = false;
+
+  bool get _selecting => _selectMode;
+
+  void _exitSelectMode() => setState(() {
+    _selectMode = false;
+    _selected.clear();
+  });
 
   @override
   void dispose() {
@@ -59,7 +67,7 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
     return PopScope(
       canPop: !_selecting,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) setState(_selected.clear);
+        if (!didPop) _exitSelectMode();
       },
       child: Scaffold(
         appBar: _selecting ? _selectionAppBar(groups) : _appBar(),
@@ -97,6 +105,11 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
           )
         : const Text('標本一覧'),
     actions: [
+      IconButton(
+        tooltip: '選択',
+        icon: const Icon(Icons.checklist),
+        onPressed: () => setState(() => _selectMode = true),
+      ),
       IconButton(
         tooltip: _searching ? '検索を閉じる' : '検索',
         icon: Icon(_searching ? Icons.close : Icons.search),
@@ -139,9 +152,9 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
       leading: IconButton(
         tooltip: '選択を解除',
         icon: const Icon(Icons.close),
-        onPressed: () => setState(_selected.clear),
+        onPressed: _exitSelectMode,
       ),
-      title: Text('${_selected.length}件を選択'),
+      title: Text(_selected.isEmpty ? '標本を選んでください' : '${_selected.length}件を選択'),
       actions: [
         TextButton(
           onPressed: () => setState(() {
@@ -156,12 +169,17 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
   /// 選択モードの操作(要件定義 S-04)。
   Widget _selectionBar() {
     final ids = _selected.toList()..sort();
+    // 何も選んでいないときは、操作を押せない
+    final enabled = ids.isNotEmpty;
     Widget action(IconData icon, String label, VoidCallback onTap) => Expanded(
       child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(icon), const SizedBox(height: 2), Text(label, style: const TextStyle(fontSize: 12))]),
+        onTap: enabled ? onTap : null,
+        child: Opacity(
+          opacity: enabled ? 1 : 0.38,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(icon), const SizedBox(height: 2), Text(label, style: const TextStyle(fontSize: 12))]),
+          ),
         ),
       ),
     );
@@ -173,11 +191,11 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
             action(Icons.print, 'ラベル出力', () => context.push('/labels', extra: ids)),
             action(Icons.edit_note, '一括編集', () async {
               final done = await context.push<bool>('/bulk-edit', extra: BulkEditArgs(ids));
-              if (done == true && mounted) setState(_selected.clear);
+              if (done == true && mounted) _exitSelectMode();
             }),
             action(Icons.fact_check, '同定を追加', () async {
               final done = await context.push<bool>('/identify', extra: IdentifyArgs(ids));
-              if (done == true && mounted) setState(_selected.clear);
+              if (done == true && mounted) _exitSelectMode();
             }),
             action(Icons.delete_outline, '削除', () => _delete(ids)),
           ],
@@ -202,7 +220,7 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
     if (ok != true) return;
     await ref.read(specimenEditServiceProvider).moveToTrash(ids);
     if (!mounted) return;
-    setState(_selected.clear);
+    _exitSelectMode();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${ids.length}件をごみ箱に移しました')));
   }
 
@@ -231,7 +249,10 @@ class _SpecimenListScreenState extends ConsumerState<SpecimenListScreen> {
               selected: _selected.containsAll(_idsOf(group)),
               onTap: _selecting ? () => _toggle(group) : () => openSpecimenGroup(context, group),
               // 長押しで選択モードに入る(行ごとにまとめて選ぶ)
-              onLongPress: () => _toggle(group),
+              onLongPress: () {
+                _selectMode = true;
+                _toggle(group);
+              },
             ),
             const Divider(height: 1),
           ],
