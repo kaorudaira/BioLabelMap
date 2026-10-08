@@ -3,6 +3,7 @@ import 'package:biolabelmap/core/db/database_provider.dart';
 import 'package:biolabelmap/domain/models/calendar_date.dart';
 import 'package:biolabelmap/domain/models/collection_period.dart';
 import 'package:biolabelmap/domain/sampling_method.dart';
+import 'package:biolabelmap/domain/species_catalog.dart';
 import 'package:biolabelmap/domain/species_name.dart';
 import 'package:biolabelmap/domain/status.dart';
 import 'package:biolabelmap/features/identification/identify_screen.dart';
@@ -33,7 +34,7 @@ void main() {
     await tester.pump();
   }
 
-  Future<void> pumpScreen(WidgetTester tester, {int count = 1, SpeciesName? initial, String? lastIdentifier}) async {
+  Future<void> pumpScreen(WidgetTester tester, {int count = 1, SpeciesName? initial, String? lastIdentifier, SpeciesCatalog? catalog}) async {
     final row = await real(tester, () async {
       await SettingsService(db).initializeCatalog(0);
       final r = await RecordService(db).save(
@@ -59,6 +60,7 @@ void main() {
         overrides: [
           databaseProvider.overrideWithValue(db),
           settingsProvider.overrideWith((ref) => Stream.value(row)),
+          speciesCatalogProvider.overrideWith((ref) async => catalog ?? SpeciesCatalog.empty),
         ],
         child: MaterialApp(
           home: Builder(
@@ -103,7 +105,7 @@ void main() {
     expect(tester.widget<TextField>(field('命名者・年')).controller!.text, 'Chaudoir, 1869');
     await settle(tester);
     // 候補を入れたあとは、候補の一覧を閉じる
-    expect(find.text('辞書の候補(選ぶとまとめて入ります)'), findsNothing);
+    expect(find.text('候補(選ぶとまとめて入ります)'), findsNothing);
   });
 
   testWidgets('種名を入れて保存すると仮同定で履歴に加わり、同定者を覚える', (tester) async {
@@ -184,5 +186,85 @@ void main() {
     await tester.tap(find.text('ō'));
     await tester.pump();
     expect(tester.widget<TextField>(field('命名者・年')).controller!.text, 'ō');
+  });
+
+  group('甲虫の目録', () {
+    final catalog = SpeciesCatalog.parseCsv(
+      '"クボタヒメハネカクシ","Atheta (Atheta) transfuga (Sharp, 1874)"\n'
+      '"カラカネナカボソタマムシ　基亜種","Coraebus ignotus ignotus E. Saunders, 1873"\n'
+      '"カラカネナカボソタマムシ　奄美亜種","Coraebus ignotus shibatai Y. Kurosawa, 1963"',
+    );
+
+    String text(WidgetTester tester, String label) => tester.widget<TextField>(field(label)).controller!.text;
+
+    testWidgets('和名が目録の1つの種に一致したら、学名と命名者・年が自動で入る', (tester) async {
+      await pumpScreen(tester, catalog: catalog);
+      await tester.enterText(field('和名(任意)'), 'クボタヒメハネカクシ');
+      await tester.pump();
+      expect(text(tester, '属'), 'Atheta');
+      expect(text(tester, '種'), 'transfuga');
+      expect(text(tester, '命名者・年'), '(Sharp, 1874)');
+      expect(find.textContaining('目録から入力しました'), findsOneWidget);
+    });
+
+    testWidgets('属と種を入力したら、和名と命名者・年が自動で入る。入力済みの欄は書き換えない', (tester) async {
+      await pumpScreen(tester, catalog: catalog);
+      await tester.enterText(field('命名者・年'), '自分の入力');
+      await tester.enterText(field('属'), 'atheta');
+      await tester.enterText(field('種'), 'transfuga');
+      await tester.pump();
+      expect(text(tester, '和名(任意)'), 'クボタヒメハネカクシ');
+      expect(text(tester, '命名者・年'), '自分の入力');
+      expect(text(tester, '属'), 'atheta');
+    });
+
+    testWidgets('自動入力のあとに消した欄は、同じ種に一致している間は入れ直さない', (tester) async {
+      await pumpScreen(tester, catalog: catalog);
+      await tester.enterText(field('属'), 'Atheta');
+      await tester.enterText(field('種'), 'transfuga');
+      await tester.pump();
+      expect(text(tester, '命名者・年'), '(Sharp, 1874)');
+
+      await tester.enterText(field('命名者・年'), '');
+      await tester.enterText(field('和名(任意)'), 'クボタヒメハネカクシ');
+      await tester.pump();
+      expect(text(tester, '命名者・年'), '');
+    });
+
+    testWidgets('亜種が複数ある種は、1つに決まらないので自動入力しない', (tester) async {
+      await pumpScreen(tester, catalog: catalog);
+      await tester.enterText(field('属'), 'Coraebus');
+      await tester.enterText(field('種'), 'ignotus');
+      await tester.pump();
+      expect(text(tester, '和名(任意)'), '');
+      expect(find.textContaining('目録から入力しました'), findsNothing);
+    });
+
+    testWidgets('打っている途中の文字には、目録の候補を出し、選ぶとまとめて入る', (tester) async {
+      await pumpScreen(tester, catalog: catalog);
+      await tester.enterText(field('和名(任意)'), 'カラカネ');
+      await settle(tester);
+      expect(find.text('目録'), findsNWidgets(2));
+
+      await tester.tap(find.textContaining('奄美亜種'));
+      await tester.pump();
+      expect(text(tester, '亜種'), 'shibatai');
+      expect(text(tester, '命名者・年'), 'Y. Kurosawa, 1963');
+    });
+
+    testWidgets('自分が使った種(辞書)を先に出し、同じ種は目録と重ねて出さない', (tester) async {
+      await pumpScreen(
+        tester,
+        catalog: SpeciesCatalog.parseCsv(
+          '"オサムシ","Carabus insulicola Chaudoir, 1869"\n'
+          '"オサムシモドキ","Carabus insulicolax Chaudoir, 1869"',
+        ),
+      );
+      await tester.enterText(field('属'), 'carabus');
+      await settle(tester);
+      final titles = tester.widgetList<ListTile>(find.byType(ListTile)).map((t) => (t.title! as Text).data).toList();
+      expect(titles, ['オサムシ Carabus insulicola', 'オサムシモドキ Carabus insulicolax']);
+      expect(find.text('目録'), findsOneWidget);
+    });
   });
 }

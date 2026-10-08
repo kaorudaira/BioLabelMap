@@ -176,7 +176,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               '県・市町村の英語表記: 総務省「全国地方公共団体コード」、日本郵便「郵便番号データ」を加工して作成\n\n'
               '大字のローマ字: デジタル庁「アドレス・ベース・レジストリ」'
               '(https://www.digital.go.jp/policies/base_registry_address、CC BY 4.0)、'
-              '日本郵便「郵便番号データ」を加工して作成。長音のマクロンはカナから補っています',
+              '日本郵便「郵便番号データ」を加工して作成。長音のマクロンはカナから補っています'
+              '\n\n'
+              '甲虫の和名・学名: 「日本産甲虫目録」(https://japanesebeetles.jimdofree.com/)のデータを、同定の自動入力に使用',
               style: textTheme.bodySmall,
             ),
           ],

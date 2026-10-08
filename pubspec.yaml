@@ -82,6 +82,8 @@ flutter:
     - assets/data/municipalities.json
     # 自治体コード+大字 → 大字のローマ字(公的データ)。tools/municipalities/build_oaza.dart で生成する
     - assets/data/oaza_romaji.json
+    # 甲虫の和名と学名の目録(同定の自動入力に使う)。出典: 日本産甲虫目録 https://japanesebeetles.jimdofree.com/
+    - assets/data/beetles_master.csv
     # ラベルの欧文フォント(SIL Open Font License。FiraSansCondensed-OFL.txt を同梱)
     - assets/fonts/FiraSansCondensed-Regular.ttf
     - assets/fonts/FiraSansCondensed-Italic.ttf
