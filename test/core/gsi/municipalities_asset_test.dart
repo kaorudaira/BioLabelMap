@@ -41,6 +41,16 @@ void main() {
     expect(directory.lookup('44212')!.municipalityEn, 'Bungoōno-shi');
   });
 
+  test('語の境目の母音の連続は長音にしない(overrides.json で直したもの)', () {
+    expect(directory.lookup('12218')!.municipalityEn, 'Katsuura-shi');
+    expect(directory.lookup('28209')!.municipalityEn, 'Toyooka-shi');
+    expect(directory.lookup('01560')!.municipalityEn, 'Takinoue-chō');
+    expect(directory.lookup('01641')!.countyEn, 'Hiroo-gun');
+    expect(directory.lookup('42391')!.countyEn, 'Kitamatsuura-gun');
+    // 漢字1字の中の長音は、そのまま長音
+    expect(directory.lookup('07203')!.municipalityEn, 'Kōriyama-shi');
+  });
+
   test('町村は郡を分けて持つ', () {
     final yuzawa = directory.lookup('15461')!;
     expect(yuzawa.municipalityEn, 'Yuzawa-machi');
