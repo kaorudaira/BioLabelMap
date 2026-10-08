@@ -82,6 +82,7 @@ class DataLabelLayout {
     required this.detailAddressReduced,
     required this.droppedJapaneseSegments,
     required this.japaneseOmitted,
+    this.japaneseOmittedForDate = false,
     required this.overflows,
   });
 
@@ -102,6 +103,9 @@ class DataLabelLayout {
   /// 1段階小さくしても収まらないため、日本語の地名を省いたか。
   /// 印刷の前に警告し、省いてよいか確認する(要件定義 S-07)。
   final bool japaneseOmitted;
+
+  /// 日付と採集者が1行に収まらないため、日本語の地名を省いたか(この場合も [japaneseOmitted] が立つ)。
+  final bool japaneseOmittedForDate;
 
   /// 収まらない(行数が多すぎる、または枠より長い語がある)。プレビューで警告する。
   final bool overflows;
@@ -128,6 +132,25 @@ DataLabelLayout layoutDataLabel(
   required TextMeasurer measurer,
   bool allowOmitJapanese = true,
 }) {
+  // 日付と採集者が1行に収まらないときは、日本語の地名を印字しない(確認なし)
+  final bodyLines = lines.where((l) => l.role == DataLabelLineRole.body);
+  final dateTooWide =
+      bodyLines.isNotEmpty &&
+      measurer.widthOf(bodyLines.last.text, style.bodyPt) > spec.wrapWidthPt;
+  if (allowOmitJapanese && dateTooWide && lines.any((l) => l.role == DataLabelLineRole.japanese)) {
+    final attempt = _Attempt(
+      [for (final l in lines) if (l.role != DataLabelLineRole.japanese) l],
+      style,
+      spec,
+      measurer,
+    );
+    return attempt.toLayout(
+      reduced: false,
+      japaneseOmitted: true,
+      japaneseOmittedForDate: true,
+    );
+  }
+
   final normal = _Attempt(lines, style, spec, measurer);
   if (normal.fits) return normal.toLayout(reduced: false);
 
@@ -221,7 +244,11 @@ class _Attempt {
 
   bool get fits => !tooManyLines && !tooTall && !japaneseDoesNotFit && !anyTooWide;
 
-  DataLabelLayout toLayout({required bool reduced, bool japaneseOmitted = false}) =>
+  DataLabelLayout toLayout({
+    required bool reduced,
+    bool japaneseOmitted = false,
+    bool japaneseOmittedForDate = false,
+  }) =>
       DataLabelLayout(
         lines: placed,
         headerReduced: headerReduced,
@@ -229,6 +256,7 @@ class _Attempt {
         detailAddressReduced: reduced,
         droppedJapaneseSegments: dropped,
         japaneseOmitted: japaneseOmitted,
+        japaneseOmittedForDate: japaneseOmittedForDate,
         overflows: !fits,
       );
 }

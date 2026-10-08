@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -34,6 +36,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   final _map = MapController();
   var _layer = GsiTileLayer.standard;
 
+  /// 地図の回転角(度)。0 が北向き。
+  var _rotation = 0.0;
+
+  /// 二本指での回転を許すか。既定は北固定(野外で向きを見失わないため)。
+  var _rotationEnabled = false;
+
   /// 地図の長押しで立てた仮ピン。
   LatLng? _tempPin;
 
@@ -66,6 +74,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               initialCenter: _japan,
               initialZoom: 5,
               maxZoom: 20,
+              interactionOptions: InteractionOptions(
+                flags: _rotationEnabled
+                    ? InteractiveFlag.all
+                    : InteractiveFlag.all & ~InteractiveFlag.rotate,
+              ),
+              onPositionChanged: (camera, _) {
+                // 回転の有無が変わったときだけ描き直す(「北に戻す」ボタンの出し入れ)
+                if (camera.rotation != _rotation) setState(() => _rotation = camera.rotation);
+              },
               onLongPress: (_, point) => setState(() => _tempPin = point),
               onTap: (_, _) => setState(() => _tempPin = null),
             ),
@@ -74,6 +91,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 urlTemplate: _layer.urlTemplate,
                 maxNativeZoom: _layer.maxNativeZoom,
                 userAgentPackageName: 'com.example.biolabelmap',
+                // 読み込みに失敗したタイルを記録する(一部だけ灰色のままになる不具合の切り分け用)
+                errorTileCallback: (tile, error, stackTrace) =>
+                    debugPrint('タイル読み込み失敗 ${tile.coordinates}: $error'),
               ),
               if (current != null)
                 CircleLayer(
@@ -162,6 +182,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 icon: Icons.layers,
                 onTap: _chooseLayer,
               ),
+              const SizedBox(height: 6),
+              _CompassButton(
+                rotationDegrees: _rotation,
+                rotationEnabled: _rotationEnabled,
+                onTap: _toggleRotation,
+              ),
               if (pending > 0) ...[
                 const SizedBox(height: 6),
                 _Badge(text: '補完待ち $pending件', color: warningColor, icon: Icons.sync, onTap: _enrichNow),
@@ -180,6 +206,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ],
       ),
     );
+  }
+
+  /// 回転できるモードと、北固定のモードを切り替える。北固定にするときは北向きに戻す。
+  void _toggleRotation() {
+    setState(() => _rotationEnabled = !_rotationEnabled);
+    if (!_rotationEnabled) _map.rotate(0);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(_rotationEnabled ? '地図の回転: オン(二本指で回せます)' : '地図の回転: オフ(北を上に固定)'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
 
   Future<void> _chooseLayer() async {
@@ -495,6 +535,82 @@ class _CurrentLocationDot extends StatelessWidget {
 }
 
 /// 地図の上に重ねる小さな表示(GPS精度、補完待ちなど)。
+/// コンパス形のボタン。針は地図の回転に合わせて回り、赤い側が北。
+/// タップで、回転できるモードと北固定のモードを切り替える(北固定のときは鍵を重ねる)。
+class _CompassButton extends StatelessWidget {
+  const _CompassButton({
+    required this.rotationDegrees,
+    required this.rotationEnabled,
+    required this.onTap,
+  });
+
+  final double rotationDegrees;
+  final bool rotationEnabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = rotationEnabled ? BlockColors.location : Colors.black54;
+    return Semantics(
+      button: true,
+      label: rotationEnabled ? '地図の回転: オン。タップで北固定にする' : '地図の回転: オフ。タップで回転できるようにする',
+      child: Material(
+        color: Colors.white,
+        elevation: 2,
+        shape: CircleBorder(side: BorderSide(color: color, width: rotationEnabled ? 2 : 1)),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Transform.rotate(
+                  angle: rotationDegrees * math.pi / 180,
+                  child: CustomPaint(size: const Size(26, 26), painter: _NeedlePainter()),
+                ),
+                if (!rotationEnabled)
+                  const Positioned(right: 4, bottom: 4, child: Icon(Icons.lock, size: 13, color: Colors.black54)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// コンパスの針。上が北(赤)、下が南(灰)。
+class _NeedlePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final w = size.width * 0.2;
+    final h = size.height / 2;
+    canvas.drawPath(
+      ui.Path()
+        ..moveTo(c.dx, c.dy - h)
+        ..lineTo(c.dx + w, c.dy)
+        ..lineTo(c.dx - w, c.dy)
+        ..close(),
+      Paint()..color = Colors.red.shade700,
+    );
+    canvas.drawPath(
+      ui.Path()
+        ..moveTo(c.dx, c.dy + h)
+        ..lineTo(c.dx + w, c.dy)
+        ..lineTo(c.dx - w, c.dy)
+        ..close(),
+      Paint()..color = Colors.grey.shade500,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_NeedlePainter oldDelegate) => false;
+}
+
 class _Badge extends StatelessWidget {
   const _Badge({required this.text, required this.color, required this.icon, this.onTap});
 
