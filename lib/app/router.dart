@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import '../features/backup/backup_screen.dart';
 import '../features/label/label_screen.dart';
 import '../features/map/map_screen.dart';
+import '../features/offline/offline_area_new_screen.dart';
+import '../features/offline/offline_maps_screen.dart';
 import '../features/record/record_screen.dart';
 import '../features/settings/settings_screen.dart';
 
@@ -13,6 +15,8 @@ GoRouter buildRouter() => GoRouter(
     GoRoute(path: '/labels', builder: (context, state) => const LabelScreen()),
     GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
     GoRoute(path: '/backup', builder: (context, state) => const BackupScreen()),
+    GoRoute(path: '/offline', builder: (context, state) => const OfflineMapsScreen()),
+    GoRoute(path: '/offline/new', builder: (context, state) => const OfflineAreaNewScreen()),
     GoRoute(
       path: '/record',
       // `extra` で渡した RecordArgs を受け取る(URL には載せない)

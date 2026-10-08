@@ -83,6 +83,16 @@ class RecordForm {
   Sex? sex;
   String remarks;
 
+  /// 位置を手動で補正する(F-06)。精度は「手動」になり、標高と地名は取り直すので空にする。
+  void correctPosition(double newLatitude, double newLongitude) {
+    latitude = newLatitude;
+    longitude = newLongitude;
+    accuracyMeters = null;
+    isManualPosition = true;
+    elevationMeters = null;
+    place = null;
+  }
+
   CollectionPeriod get period => isPeriod
       ? CollectionPeriod(startDate, endDate)
       : CollectionPeriod.singleDay(startDate);

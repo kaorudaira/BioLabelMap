@@ -16,6 +16,7 @@ import '../../core/location/location_service.dart';
 import '../../services/map_query_service.dart';
 import '../../services/service_providers.dart';
 import '../record/record_form.dart';
+import 'offline_tile_layer.dart';
 import '../record/record_screen.dart';
 
 /// 精度の警告しきい値(要件定義 F-06)。
@@ -87,14 +88,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               onTap: (_, _) => setState(() => _tempPin = null),
             ),
             children: [
-              TileLayer(
-                urlTemplate: _layer.urlTemplate,
-                maxNativeZoom: _layer.maxNativeZoom,
-                userAgentPackageName: 'com.example.biolabelmap',
-                // 読み込みに失敗したタイルを記録する(一部だけ灰色のままになる不具合の切り分け用)
-                errorTileCallback: (tile, error, stackTrace) =>
-                    debugPrint('タイル読み込み失敗 ${tile.coordinates}: $error'),
-              ),
+              GsiTileLayerWidget(layer: _layer),
               if (current != null)
                 CircleLayer(
                   circles: [
@@ -369,6 +363,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               leading: const Icon(Icons.print),
               title: const Text('ラベル出力'),
               onTap: () => Navigator.pop(context, '/labels'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.download_for_offline),
+              title: const Text('オフライン地図'),
+              onTap: () => Navigator.pop(context, '/offline'),
             ),
             ListTile(
               leading: const Icon(Icons.backup),
