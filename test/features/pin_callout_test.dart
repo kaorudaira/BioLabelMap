@@ -99,6 +99,48 @@ void main() {
     });
   });
 
+  group('吹き出しの位置', () {
+    // 先の三角(16×8)
+    Finder tail() => find.byWidgetPredicate((w) => w is CustomPaint && w.size == const Size(16, 8));
+
+    Future<void> pumpPlaced(WidgetTester tester, {double shiftX = 0, bool below = false}) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            localityProvider(1).overrideWith((ref) => Stream.value(locality())),
+            specimenItemsProvider.overrideWith((ref) => Stream.value([item(1, species: carabus)])),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: Center(child: SizedBox(width: 460, child: Center(child: PinBubble(localityId: 1, shiftX: shiftX, below: below)))),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('横にずらすと、吹き出しの本体だけが動き、先の三角(ピンを指す)は動かない', (tester) async {
+      await pumpPlaced(tester);
+      final base = tester.getCenter(find.text('新潟県魚沼市下折立')).dx;
+      final tailBase = tester.getCenter(tail()).dx;
+
+      await pumpPlaced(tester, shiftX: -70);
+      expect(tester.getCenter(find.text('新潟県魚沼市下折立')).dx, closeTo(base - 70, 0.01));
+      expect(tester.getCenter(tail()).dx, closeTo(tailBase, 0.01));
+    });
+
+    testWidgets('ピンの下に置くときは、先の三角が吹き出しの上にある', (tester) async {
+      await pumpPlaced(tester);
+      final tailAbove = tester.getCenter(tail()).dy;
+      final cardAbove = tester.getCenter(find.text('新潟県魚沼市下折立')).dy;
+      expect(tailAbove, greaterThan(cardAbove)); // ふつうは、吹き出しの下に三角
+
+      await pumpPlaced(tester, below: true);
+      expect(tester.getCenter(tail()).dy, lessThan(tester.getCenter(find.text('新潟県魚沼市下折立')).dy));
+    });
+  });
+
   group('ウィンドウ', () {
     testWidgets('「この地点で追加」「詳細をひらく」を出し、押すとそれぞれの動作を呼ぶ。×で閉じる', (tester) async {
       final calls = <String>[];

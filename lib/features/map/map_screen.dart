@@ -18,6 +18,7 @@ import '../../services/service_providers.dart';
 import '../record/record_form.dart';
 import '../specimen/add_at_locality.dart';
 import 'offline_tile_layer.dart';
+import 'callout_placement.dart';
 import 'pin_callout.dart';
 import 'place_search_sheet.dart';
 import '../record/record_screen.dart';
@@ -55,6 +56,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// タップして選んだ過去の地点のピン。吹き出しと、記録ボタンの上のウィンドウを出す。
   int? _selectedPinId;
 
+  /// 地図の、いまの表示(ピンの画面上の位置を求めて、吹き出しを画面の中に収めるのに使う)。
+  MapCamera? _camera;
+
   /// 最初の測位で、現在地に地図を移したか。
   var _centered = false;
 
@@ -83,6 +87,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final current = position.value;
     // 選んだピンが、標本の削除などで無くなったら、選びを外す
     final selectedPin = pins.where((p) => p.localityId == _selectedPinId).firstOrNull;
+    final bubble = _bubble;
 
     return Scaffold(
       body: Stack(
@@ -99,6 +104,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     : InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
               onPositionChanged: (camera, hasGesture) {
+                _camera = camera;
                 // 指で動かしたら、現在地への追従を外す
                 if (hasGesture && _following) setState(() => _following = false);
                 if (camera.zoom.round() != _zoom) setState(() => _zoom = camera.zoom.round());
@@ -147,17 +153,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       child: _PinMarker(pin: pin, onTap: () => _showPin(pin)),
                     ),
                   if (selectedPin != null)
-                    // 吹き出しは、ピンの上(ピンの先端が、座標の位置)
+                    // 吹き出しは、ピンの上(ピンの先端が、座標の位置)。画面の端のピンは、横にずらして画面の中に収め、
+                    // 画面の上の端で上に収まらないときは、ピンの下に置く
                     Marker(
                       point: LatLng(selectedPin.latitude, selectedPin.longitude),
-                      width: PinBubble.width,
-                      height: 190,
-                      alignment: Alignment.topCenter,
+                      // 横にずらしても枠からはみ出さないよう、枠は吹き出しより左右に広く取る
+                      width: PinBubble.width + 2 * _bubbleSlack,
+                      height: 200,
+                      alignment: bubble.below ? Alignment.bottomCenter : Alignment.topCenter,
                       child: Align(
-                        alignment: Alignment.bottomCenter,
+                        alignment: bubble.below ? Alignment.topCenter : Alignment.bottomCenter,
                         child: Padding(
-                          padding: const EdgeInsets.only(bottom: 22),
-                          child: PinBubble(localityId: selectedPin.localityId),
+                          padding: bubble.below ? const EdgeInsets.only(top: 22) : const EdgeInsets.only(bottom: 22),
+                          child: PinBubble(
+                            localityId: selectedPin.localityId,
+                            shiftX: bubble.shiftX,
+                            below: bubble.below,
+                          ),
                         ),
                       ),
                     ),
@@ -539,10 +551,37 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     context.push('/record', extra: RecordArgs(form));
   }
 
+  /// 吹き出しの左右に取る余白(横にずらせる量)。
+  static const _bubbleSlack = 120.0;
+
+  /// 吹き出しを置く位置。ピンをタップしたときに決める(そのあと地図を動かしても、取り直さない)。
+  var _bubble = const CalloutPlacement(shiftX: 0, below: false);
+
+  /// ピンの画面上の位置から、吹き出しが画面の左右・上に収まるように決める。
+  CalloutPlacement _bubblePlacement(LocalityPin pin) {
+    final camera = _camera;
+    if (camera == null) return const CalloutPlacement(shiftX: 0, below: false);
+    final screen = camera.size;
+    final offset = camera.latLngToScreenOffset(LatLng(pin.latitude, pin.longitude));
+    final placement = placeCallout(
+      pin: Offset(offset.dx, offset.dy),
+      screen: Size(screen.width, screen.height),
+      width: PinBubble.width,
+      // 上の操作ボタン(精度・地図の切り替えなど)と、下の記録ボタン・ウィンドウを避ける
+      topInset: MediaQuery.paddingOf(context).top + 70,
+      bottomInset: 220,
+    );
+    return CalloutPlacement(
+      shiftX: placement.shiftX.clamp(-_bubbleSlack, _bubbleSlack).toDouble(),
+      below: placement.below,
+    );
+  }
+
   /// ピンをタップしたとき。ピンの上に吹き出し(和名と住所)を出し、記録ボタンの上に
   /// 「この地点で追加」と「詳細をひらく」のウィンドウを出す。
   void _showPin(LocalityPin pin) => setState(() {
     _selectedPinId = pin.localityId;
+    _bubble = _bubblePlacement(pin);
     _tempPin = null;
   });
 
